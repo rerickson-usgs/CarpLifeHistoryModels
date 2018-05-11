@@ -56,7 +56,6 @@ generated quantities {
   // Estimate M from Then et al. 2014
   // * 100 converts from m to cm 
   for(site in 1:nSites){
-    M[site] =  4.118 * (K[site])^ (0.73) * (Linf[site] * 100) ^ (−0.33);
+    M[site] =  (4.118 * (K[site] ^ (0.73))) * (Linf[site] * 100) ^(-0.33);
   }
-
 }
