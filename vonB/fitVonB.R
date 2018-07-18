@@ -234,7 +234,7 @@ t0PlotGG <- ggplot(data = t0Plot, aes(x = Pool, y = median)) +
     geom_linerange(aes(ymin = L95, ymax = U95), size = 1)  +
     coord_flip() +
     theme_minimal() +
-    ylab(expression(italic(L)[infinity]))
+    ylab(expression(italic(t)[0]))
 print(t0PlotGG)
 ggsave("t0Plot.pdf", t0PlotGG, width = 3, height = 4)
 

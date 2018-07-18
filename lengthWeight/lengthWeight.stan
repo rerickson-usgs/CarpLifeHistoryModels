@@ -3,12 +3,11 @@ data {
   int<lower=1> K; // num ind predictors
   int<lower=1> J; // num groups
   int<lower=1> L; // num group predictors
+  int<lower=1,upper=J> jj[N]; // group for individual
   matrix[N, K] x; // individual predictors
-  matrix[J, L] u; // group predictors
   vector[N] y; // outcomes
+  matrix[J, L] u; // group predictors
 }
-
-
 parameters {
   matrix[K, J] z;
   cholesky_factor_corr[K] L_Omega;
