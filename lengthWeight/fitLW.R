@@ -109,6 +109,14 @@ dat3[ , .(PoolID, Pool)]
 u  = matrix(rep(1, length(dat3[, unique(PoolID)])), ncol = 1)
 u
 
+## output
+dat3[ , summary(WTkgL10)]
+## input
+dat3[ , summary(TLmL10)]
+
+xProject <- seq(-1, 0.25, length.out = 10)
+xProject
+
 stanData <- list(
     N  = dim(dat3)[1], # Num obs
     J  = length(dat3[, unique(PoolID)]), # num groups 
@@ -117,25 +125,26 @@ stanData <- list(
     jj = dat3[ , PoolID], # groups for each indivdual 
     x  = x, # individual predictor matrix 
     u  = u, # group predictors 
-    K  = ncol(x) # num individual predictors 
+    K  = ncol(x), # num individual predictors
+    xProject = xProject,
+    nProject = length(xProject)
 )
 
-## stanOut <- stan(file = "lengthWeight.stan", data = stanData,
-##                 chains = 4, iter = 400,
-##                 control = list(adapt_delta = 0.8))
-## save(stanOut, file = "lengthWeight2.RData")
-load("lengthWeight2.RData")
+stanOut <- stan(file = "lengthWeight.stan", data = stanData,
+                chains = 4, iter = 2000,
+                control = list(adapt_delta = 0.8))
+save(stanOut, file = "lengthWeight2.RData")
+## load("lengthWeight2.RData")
 stanOut
 
-############################
-############################
+##########################################################
+##########################################################
 ## Define paratere here: see page 147 to better describe 
 ## beta are individual-level parameters
 ## sigma corresponds to this level
 ## gamma are hyper-parameter for beta
 ## tau corresponds to this level
 ## omega is correlation matrix with tau coefficients
-lwSimpleOut
 
 stanOutsummary <- summary(stanOut, probs = c(0.025, 0.1, 0.50, 0.9, 0.975))
 stanOutsummary[[1]][grepl("beta", rownames(summary(stanOut)[[1]])), ]
@@ -150,7 +159,6 @@ intercepts <- data.frame(stanOutsummary[[1]][grepl("(beta|gamma)(\\[\\d,1\\])", 
 intercepts$ID = gsub("\\,1]|\\[", "", rownames(intercepts))
 intercepts
 
-groupPredictKey[ , PoolID := paste0("beta", PoolID)]
 groupPredictKey <- dat3[ , .(PoolID =mean(PoolID)), by = Pool][ order(PoolID),]
 groupPredictKey
 dat3[ , .(PoolID, Pool)]
@@ -178,7 +186,7 @@ ggIntercept <- ggplot(interceptsDT, aes(x = Pool, y = mean)) +
     geom_linerange( aes(ymin = l80, ymax = u80), size = 1.2) + 
     coord_flip() +
     xlab("Pool") +
-    ylab(expression(over("Length-weight intercept", "estimate ("*log[10]*log[10]*" scale)"))) +
+    ylab(expression(atop("Length-weight intercept", "estimate ("*log[10]*log[10]*" scale)"))) +
     theme_minimal()
 
 ggIntercept
@@ -190,7 +198,6 @@ slopes <- data.frame(stanOutsummary[[1]][grepl("(beta|gamma)(\\[\\d,2\\])", rown
 slopes$ID = gsub("\\,2]|\\[", "", rownames(slopes))
 slopes
 
-groupPredictKey[ , PoolID := paste0("beta", PoolID)]
 groupPredictKey <- dat3[ , .(PoolID =mean(PoolID)), by = Pool][ order(PoolID),]
 groupPredictKey
 dat3[ , .(PoolID, Pool)]
@@ -211,17 +218,87 @@ setnames(slopesDT, "X90.",  "u80")
 
 slopesDT
 
-library(ggplot2)
-
 ggSlope <- ggplot(slopesDT, aes(x = Pool, y = mean)) +
     geom_point(size = 1.5) +
     geom_linerange( aes(ymin = l95, ymax = u95)) +
     geom_linerange( aes(ymin = l80, ymax = u80), size = 1.2) + 
     coord_flip() +
     xlab("Pool") +
-    ylab(expression(over("Length-weight slope", "estimate ("*log[10]*log[10]*" scale)"))) +
+    ylab(expression(atop("Length-weight slope", "estimate ("*log[10]*log[10]*" scale)"))) +
     theme_minimal()
 
 ggSlope
 ggsave("slope.pdf", ggSlope, width = 4, height = 6)
+
+## plot projections 
+siteProjections <- data.frame(stanOutsummary[[1]][grepl("yProject", rownames(summary(stanOut)[[1]])), ])
+siteProjections$parameter <- rownames(siteProjections)
+siteProjectionsDT <- data.table(siteProjections)
+siteProjectionsDT[ , PoolID := gsub("yProject\\[(\\d{1,2}),(\\d{1,2})\\]", "\\1", parameter)]
+siteProjectionsDT[ , lengthID := as.numeric(gsub("yProject\\[(\\d{1,2}),(\\d{1,2})\\]", "\\2", parameter))]
+setnames( siteProjectionsDT, "X2.5.",  "l95")
+setnames( siteProjectionsDT, "X97.5.", "u95")
+setnames( siteProjectionsDT, "X10.",  "l80")
+setnames( siteProjectionsDT, "X90.",  "u80")
+## Merge in length
+lengthDT <- data.table(lengthID = 1:length(xProject), length = xProject)
+setkey(lengthDT, "lengthID")
+setkey(siteProjectionsDT, "lengthID")
+siteProjectionsDT <- siteProjectionsDT[lengthDT]
+## Merge files
+siteProjectionsDT[ , PoolID := paste0("beta", PoolID)]
+setkey(siteProjectionsDT, "PoolID")
+setkey(groupPredictKey, "PoolID")
+
+siteProjectionsDT <- siteProjectionsDT[groupPredictKey[ PoolID !="gamma1", ]]
+
+poolMinMax <- dat3[ , .(poolMin =min(TLmL10, na.rm = TRUE), poolMax = max(TLmL10, na.rm = TRUE)), by = Pool]
+setkey(siteProjectionsDT, "Pool")
+setkey(poolMinMax, "Pool")
+siteProjectionsDT <- siteProjectionsDT[ poolMinMax]
+
+head(siteProjectionsDT[ , length >= poolMin])
+
+
+GGlwData <- ggplot() +
+    geom_point(data = dat3, aes( x = TLmL10,  y = WTkgL10)) +
+    geom_line(data = siteProjectionsDT, aes(x = length, y = mean), color = 'blue', size = 1.1) +
+    facet_grid( ~ Pool) +
+    ## geom_ribbon(data = siteProjectionsDT,
+    ##             aes(x = length,  ymin = l95, ymax = u95), color = 'orange', alpha = 0.5) +
+    ylab(expression(log[10]*"(weight kg)")) +
+    xlab(expression(log[10]*"(length m)")) +
+    theme_minimal()
+GGlwData
+ggsave("lengthWeightData.pdf", GGlwData, width = 8, height = 4)
+
+## exract out hyper parameter
+yHyper <- data.frame(stanOutsummary[[1]][grepl("yHyper", rownames(summary(stanOut)[[1]])), ])
+yHyper$parameter = rownames(yHyper)
+yHyperDT <- data.table(yHyper)
+yHyperDT[ , lengthID := as.numeric(gsub("yHyper\\[(\\d{1,2})\\]", "\\1", parameter))]
+setnames( yHyperDT, "X2.5.",  "l95")
+setnames( yHyperDT, "X97.5.", "u95")
+setnames( yHyperDT, "X10.",  "l80")
+setnames( yHyperDT, "X90.",  "u80")
+## Merge in length
+lengthDT <- data.table(lengthID = 1:length(xProject), length = xProject)
+setkey(lengthDT, "lengthID")
+setkey(yHyperDT, "lengthID")
+yHyperDT <-
+    yHyperDT[lengthDT]
+
+
+ggHyper <- ggplot() +
+    geom_line(data = siteProjectionsDT, aes(x = length, y = mean, color = Pool),, size = 1.1) +
+    ylab(expression(log[10]*"(weight kg)")) +
+    xlab(expression(log[10]*"(length m)")) +
+    theme_minimal() +
+    scale_color_manual( values = c("red", "blue", "seagreen",
+                                   "orange", "skyblue", "navyblue")) +
+    geom_ribbon(data = yHyperDT, aes(x = length, ymin = l95, ymax = u95), fill = 'grey', alpha = 0.5) +
+    geom_line(data = yHyperDT, aes(x = length, y = mean), color = 'black', size = 1)
+
+ggHyper
+ggsave("lengthWeightHyper.pdf", ggHyper, width = 6, height = 4) 
 

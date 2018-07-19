@@ -7,6 +7,8 @@ data {
   matrix[N, K] x; // individual predictors
   vector[N] y; // outcomes
   matrix[J, L] u; // group predictors
+  int<lower=1> nProject;
+  vector[nProject] xProject;
 }
 parameters {
   matrix[K, J] z;
@@ -26,4 +28,18 @@ model {
   L_Omega ~ lkj_corr_cholesky(2);
   to_vector(gamma) ~ normal(0, 5);
   y ~ normal(rows_dot_product(beta[jj] , x), sigma);
+}
+generated quantities{
+  // simulate model outputs
+  matrix[ J, nProject] yProject;
+  real yHyper[nProject];
+  
+    
+  for(p in 1:nProject){
+    yHyper[p] =  gamma[1,1] +  gamma[1,2]  * xProject[p];
+
+    for(group in 1:J){
+      yProject[ group, p] = beta[ group, 1] + beta[ group, 2] * xProject[p];
+    }    
+  }
 }
