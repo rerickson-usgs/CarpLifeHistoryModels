@@ -5,28 +5,37 @@ Richard A. Erickson, David Glover, and Jahn Kallis
 
 
 This code fits Asian carp observation data to different statistical models that describe the demography of the species.
+We also include some simple Stan models we in the process of building our final model.
+We include these to help other because a paucity of ecological models exist for Stan.
+
 The code uses [Stan](mc-stan.org) called through [R](https://www.r-project.org/) to fit the models.
 These models can readily be adapted to other fish and animal species.
 Users should understand Stan and R before trying to use this code.
+Additionally, we used the `data.table` package to format our data.
 
 ## Code files
 
-All of our R script call Stan models. The R scripts also manipulate and explore the data.
+All of our R script call Stan models. The R scripts also manipulate and explore the data as well as examines the results.
+
 
 This repository contains the following files and folder:
 - `README.md`: This file.
 - `LICENSE`: The standard USGS software license.
 -  `lengthWeight`: This folder contains a length-weight model.
-   -  `fitLW.R` is R code to fit the model.
-   -  `lengthWeight.stan` is the Stan model.
-- `maturity`: This folder contains a model to estimate the length as which fish become sexually mature.
+   -  `fitLW.R` is R code to fit 3 Stan models.
+   -  `lwSimple.stan` is a simple linear regression with a single intercept and single slope parameter.
+   -  `lwSimpleMatrix.stan` is the above model, but uses matrix notation for inputs and can include multiple slopes and intercepts. 
+   -  `lengthWeight.stan` is the Stan model we used that includes a correlated structure for hyperparameters. It is described in the Stan Manual (9.13. Multivariate Priors for Hierarchical Models for Stan version 17.0). We used this model for our manuscript. 
+- `maturity`: This folder contains a model to estimate the length as which female fish become sexually mature. It is a simple logistic regression.
   - `fitMaturity.R` is R code to fit the model.
   - `maturity.stan` is the Stan model.
-- `vonB`: This folder contains a von Bertalanffy model. In addition to estimating the von Vertalanffy parameter, the model estimates natural mortality.
-  - `vonBdemo.stan` is a simple von Vertalanffy model that serves as a simple example used for debugging and learning about Stan.
-  - `fitVonBexample.R` is R code to fit the above model.
-  - `vonBo.stan` is an optimized, hierarchical model that includes correlated variables.
-  - `fitVonB.R` is the R code that fits the above model.  
+- `vonB`: This folder contains a von Bertalanffy model. In addition to estimating the von Vertalanffy parameter, the model estimates natural mortality. We include several models because we started simple and build up to the model we used for our manuscript. 
+  - `fitVonBexample.R` is R code to fit a simple, example Von B model, `vonBdemo.stan` 
+  - `vonBdemo.stan` is a simple von Vertalanffy model that serves as a simple example used for debugging and learning about Stan. This model does not include a correlated coefficient structure or optimization.
+  - `fitVonBnot0.R` fits the Von B model, but without a size at time zero (t0) parameter: `vonBoNot0.stan`.
+  - `vonBoNot0.stan` is a Von B model without a size at time zero parameters. This model has been optimized and includes a correlated structure for coefficients.
+  - `fitVonB.R` is the R code that fits the model we used in our manuscript: `vonBo.stan`
+  -  `vonBo.stan` is an optimized, hierarchical model that includes correlated variables.
 
 
 ## Contact for code 

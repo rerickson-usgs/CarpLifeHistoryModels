@@ -1,3 +1,4 @@
+## Load required libraires
 library(data.table) # used for data manipulation
 library(lubridate) # used to format date
 library(ggplot2) # used for plotting 
@@ -12,7 +13,7 @@ dat[,  FL := as.numeric(FL)]
 
 dat[ , unique(Species)]
 
-
+## Explore data with plots and do some manipulation
 ggplot(data  = dat[Species %in% c( "SVCP", "BHCP"), ],
        aes(x = TL, y = WT)) +
     geom_point(alpha = 0.5) +

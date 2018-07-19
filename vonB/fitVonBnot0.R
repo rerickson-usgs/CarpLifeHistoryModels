@@ -1,5 +1,3 @@
-## TO DO: FINISH CREATING PLOTS OF PARAMETERS
-
 library(data.table) # used for data manipulation
 library(lubridate) # used to format date
 library(ggplot2) # used for plotting 
@@ -28,16 +26,12 @@ FLvTL <- ggplot(data  = dat[Species %in% c( "SVCP", "BHCP"), ],
     theme_minimal() +
     ylab("Fork length") +
     xlab("Total length")
-FLvTL
-## Consider modeling total length from fork length here
+## FLvTL
 
 dat2 <- dat[ !is.na(TL) & !is.na(Age), ]
 dat2[ , .N, by = Pool]
-
-
 dat2[ , Age2 := floor(Age)]
 
-## Dave, why the -5? 
 dat2[ , Age3 := Age2 + (month(Sampdate)-5)/12]
 dat2[ , Pool :=factor(Pool)]
 dat2[ , levels(Pool)]
@@ -64,7 +58,7 @@ AvTLbyPool <- ggplot(dat2[ Species %in% c( "SVCP", "BHCP"), ],
 ## 
 dat2[ Species == "SVCP", .N, by = Pool][ order(N, decreasing = TRUE), ]
 
-dat3 <- dat2[ Pool %in% c("LaGrange", "Alton", "Peoria",
+dat3 <- dat2[ Pool %in% c( "Peoria", "LaGrange", "Alton",
                           "Marseilles", "Pool 26", "Pool 27") ,][ Species == "SVCP", ]
 dat3[ , Pool := factor(Pool)]
 dat3[ , PoolID := as.numeric(Pool)]
@@ -108,12 +102,12 @@ names(stanData)
 ## Model takes ~0.5 hrs to run.
 ## the stan function is commented out and the outputs loaded from a saved file
 ## unless it needs to be re-run. 
-## stanOutO <- stan(file = "vonBo.stan",
+## stanOutO <- stan(file = "vonBoNot0.stan",
 ##                  data = stanData, chains = 4, iter = 6000,
 ##                  control = list(adapt_delta = 0.8))
 
-## save(stanOutO, file = "vonBfit.RData")
-load("vonBfit.RData")
+## save(stanOutO, file = "vonBfitNot0.RData")
+load("vonBfitNot0.RData")               
 
 stanOutO
 stanOutOsummary <- summary(stanOutO, probs = c(0.025, 0.1, 0.50, 0.9, 0.975))
@@ -127,11 +121,7 @@ stanOutOsummaryDT <- data.table(stanOutOsummary[[1]])
 stanOutOsummaryDT[ , Parameter := rownames(stanOutOsummary[[1]])]
 
 
-plot(stanOutO, pars =c("Linf_bar", "t0_bar", "K_bar", "Linf"))
-quartz()
-plot(stanOutO, pars =c( "t0_bar", "t0"))
-
-traceplot(stanOutO, pars =c( "t0_bar", "t0"))
+plot(stanOutO, pars =c("Linf_bar", "K_bar", "Linf"))
 
 poolNames <- dat3[ , levels(Pool)]
 
@@ -151,6 +141,10 @@ setnames(LinfPlot,
          c("2.5%", "10%", "50%",    "90%", "97.5%"),
          c("L95",  "L80", "median", "U80", "U95"))
 
+LinfPlot[ , Pool := factor(Pool,
+                           levels = rev(c("Marseilles",  "Peoria", "LaGrange",
+                                          "Alton",
+                                          "Pool 26", "Pool 27", "across sites")))]
 
 LinfPlotGG <- ggplot(data = LinfPlot, aes(x = Pool, y = median)) +
     geom_point(size = 1.5) +
@@ -160,7 +154,7 @@ LinfPlotGG <- ggplot(data = LinfPlot, aes(x = Pool, y = median)) +
     theme_minimal() +
     ylab(expression(italic(L)[infinity]))
 print(LinfPlotGG)
-ggsave("LinfPlot.pdf", LinfPlotGG, width = 3, height = 4)
+ggsave("LinfPlotNot0.pdf", LinfPlotGG, width = 3, height = 4)
 
 ## Plot growth rates
 KPlot <- copy(stanOutOsummaryDT[ grepl("K", Parameter), ])
@@ -177,6 +171,12 @@ setnames(KPlot,
          c("L95",  "L80", "median", "U80", "U95"))
 
 
+KPlot[ , Pool := factor(Pool,
+                        levels = rev(c("Marseilles",  "Peoria", "LaGrange",
+                                        "Alton",
+                                       "Pool 26", "Pool 27", "across sites")))]
+
+
 KPlotGG <- ggplot(data = KPlot, aes(x = Pool, y = median)) +
     geom_point(size = 1.5) +
     geom_linerange(aes(ymin = L80, ymax = U80), size = 1.4)  +
@@ -185,7 +185,7 @@ KPlotGG <- ggplot(data = KPlot, aes(x = Pool, y = median)) +
     theme_minimal() +
     ylab(expression(italic(K)))
 print(KPlotGG)
-ggsave("KPlot.pdf", KPlotGG, width = 3, height = 4)
+ggsave("KPlotNot0.pdf", KPlotGG, width = 3, height = 4)
 
 ## Plot natural mortality across sites
 MPlot <- copy(stanOutOsummaryDT[ grepl("M", Parameter), ])
@@ -202,6 +202,12 @@ setnames(MPlot,
          c("2.5%", "10%", "50%",    "90%", "97.5%"),
          c("L95",  "L80", "median", "U80", "U95"))
 
+MPlot[ , Pool := factor(Pool,
+                        levels = rev(c("Marseilles",  "Peoria", "LaGrange",
+                                       "Alton",
+                                       "Pool 26", "Pool 27", "across sites")))]
+
+
 
 MPlotGG <- ggplot(data = MPlot, aes(x = Pool, y = median)) +
     geom_point(size = 1.5) +
@@ -211,32 +217,8 @@ MPlotGG <- ggplot(data = MPlot, aes(x = Pool, y = median)) +
     theme_minimal() +
     ylab(expression(italic(M)))
 print(MPlotGG)
-ggsave("MPlot.pdf", MPlotGG, width = 3, height = 4)
+ggsave("MPlotNot0.pdf", MPlotGG, width = 3, height = 4)
 
-## Plot theoretical time of zero length
-t0Plot <- copy(stanOutOsummaryDT[ grepl("t0", Parameter), ])
-poolNamesDT <- data.table(Pool = c(poolNames, "across sites"),
-                        PoolID = c(1:6, "t0_bar"))
-setkey(poolNamesDT, "PoolID")
-
-t0Plot[ , PoolID := gsub("(t0)(\\[)(\\d)(\\])", "\\3", Parameter) ]
-setkey(t0Plot, "PoolID")
-
-t0Plot <- poolNamesDT[ t0Plot]
-setnames(t0Plot,
-         c("2.5%", "10%", "50%",    "90%", "97.5%"),
-         c("L95",  "L80", "median", "U80", "U95"))
-
-
-t0PlotGG <- ggplot(data = t0Plot, aes(x = Pool, y = median)) +
-    geom_point(size = 1.5) +
-    geom_linerange(aes(ymin = L80, ymax = U80), size = 1.4)  +
-    geom_linerange(aes(ymin = L95, ymax = U95), size = 1)  +
-    coord_flip() +
-    theme_minimal() +
-    ylab(expression(italic(t)[0]))
-print(t0PlotGG)
-ggsave("t0Plot.pdf", t0PlotGG, width = 3, height = 4)
 
 ## Extract out hyper projections
 hyperProjection <- copy(stanOutOsummaryDT[ grepl("hyperProjection", Parameter), ])
@@ -267,8 +249,16 @@ allProjections <- rbind(siteProjections,
 
 stanOutOsummaryDT[ !grepl("siteProjections|hyperProjection|t0|K|Linf|M|Omega|mu_beta_raw|tau|mu", Parameter), ]
 
-siteProjections[ , Pool := factor(Pool)]
-siteProjections[ , Pool := factor(Pool, levels = levels(Pool)[c(5, 6, 1, 2, 4, 3)])]
+siteProjections[ , Pool := factor(Pool,
+                                  levels = c("Marseilles",  "Peoria", "LaGrange",
+                                              "Alton",
+                                             "Pool 26", "Pool 27"))]
+                                            
+dat3[ , Pool := factor(Pool,
+                       levels = c("Marseilles",  "Peoria", "LaGrange",
+                                   "Alton",
+                                  "Pool 26", "Pool 27"))]
+
 
 
 dataVBplot <- ggplot() + 
@@ -284,9 +274,9 @@ dataVBplot <- ggplot() +
                 aes(x = age, ymin = L95, ymax = U95), fill = 'blue',
                 alpha = 0.25)  +
     facet_wrap( ~ Pool, nrow = 2) +
-    scale_x_continuous(breaks = ageProjection)
+    scale_x_continuous(breaks = seq(0, max(ageProjection), by = 2))
 print(dataVBplot)
-ggsave("dataVBplot.pdf", dataVBplot, width = 6, height = 6)
+ggsave("dataVBplotNot0.pdf", dataVBplot, width = 6, height = 6)
 
 hyperPlot <-
     ggplot(data = hyperProjection[ age < 13, ], aes(x = age, y = mean)) +
@@ -300,8 +290,9 @@ hyperPlot <-
               size = 1.1) +
     xlab("Age (years)") +
     ylab("Length (m)") + theme_minimal() + 
-    scale_x_continuous(breaks = ageProjection) +
+    scale_x_continuous(breaks = seq(0, max(ageProjection), by = 2)) + 
     scale_color_manual( values = c("red", "blue", "seagreen",
                                    "orange", "skyblue", "navyblue")) 
 print(hyperPlot)
-ggsave("hyperPlot.pdf", hyperPlot, width = 6, height = 4)
+ggsave("hyperPlotNot0.pdf", hyperPlot, width = 6, height = 4)
+ggsave("hyperPlotNot0.jpg", hyperPlot, width = 6, height = 4)
