@@ -5,7 +5,7 @@ library(rstan) # used to fit Bayesian model
 options(mc.cores = parallel::detectCores())
 
 ## Read in a format data
-dat <- fread("../Demographics_01.csv")
+dat <- fread("../Demographics_080318.csv")
 
 dat[ , Sampdate :=ymd(Sampdate)] 
 dat[,  FL := as.numeric(FL)]
@@ -58,10 +58,12 @@ AvTLbyPool <- ggplot(dat2[ Species %in% c( "SVCP", "BHCP"), ],
 
 dat2[ Species == "SVCP", .N, by = Pool][ order(N, decreasing = TRUE), ]
 
+dat2[ , unique(Pool)]
 ## Silver carp SVCP analysis
-dat3_SVCP <- dat2[ Pool %in% c( "Peoria", "LaGrange", "Alton",
-                              "Marseilles", "Pool 26", "Pool 27") ,][ Species == "SVCP", ]
+dat3_SVCP <- dat2[ Species == "SVCP", ] 
+dat3_SVCP[ , unique(Pool)]
 dat3_SVCP[ , Pool := factor(Pool)]
+dat3_SVCP[ , levels(Pool)]
 dat3_SVCP[ , PoolID := as.numeric(Pool)]
 dat3_SVCP[ , .N, by = .(Pool, Species)]
 
@@ -109,7 +111,7 @@ names(stanData_SVCP)
 ## save(stanOutO_SVCP, file = "vonBfitNot0_SVCP.RData")
 load("vonBfitNot0_SVCP.RData")               
 
-stanOutO_SVCP
+## stanOutO_SVCP
 stanOutOsummary_SVCP <-
     summary(stanOutO_SVCP, probs = c(0.025, 0.1, 0.50, 0.9, 0.975))
 stanOutOsummary_SVCP[[1]][grepl("M", rownames(summary(stanOutO_SVCP)[[1]])), ]
@@ -131,7 +133,7 @@ poolNames_SVCP <- dat3_SVCP[ , levels(Pool)]
 ## Plot linf
 LinfPlot_SVCP <- copy(stanOutOsummaryDT_SVCP[ grepl("Linf", Parameter), ])
 poolNamesDT_SVCP <- data.table(Pool = c(poolNames_SVCP, "across sites"),
-                        PoolID = c(1:6, "Linf_bar"))
+                        PoolID = c(1:length(poolNames_SVCP), "Linf_bar"))
 setkey(poolNamesDT_SVCP, "PoolID")
 
 LinfPlot_SVCP[ , PoolID := gsub("(Linf)(\\[)(\\d)(\\])", "\\3", Parameter) ]
@@ -142,10 +144,7 @@ setnames(LinfPlot_SVCP,
          c("2.5%", "10%", "50%",    "90%", "97.5%"),
          c("L95",  "L80", "median", "U80", "U95"))
 
-LinfPlot_SVCP[ , Pool := factor(Pool,
-                           levels = rev(c("Marseilles",  "Peoria", "LaGrange",
-                                          "Alton",
-                                          "Pool 26", "Pool 27", "across sites")))]
+LinfPlot_SVCP[ , Pool := factor(Pool)]
 
 LinfPlotGG_SVCP <- ggplot(data = LinfPlot_SVCP, aes(x = Pool, y = median)) +
     geom_point(size = 1.5) +
@@ -160,7 +159,8 @@ ggsave("LinfPlotNot0_SVCP.pdf", LinfPlotGG_SVCP, width = 3, height = 4)
 ## Plot growth rates
 KPlot_SVCP <- copy(stanOutOsummaryDT_SVCP[ grepl("K", Parameter), ])
 poolNamesDT_SVCP <- data.table(Pool = c(poolNames_SVCP, "across sites"),
-                        PoolID = c(1:6, "K_bar"))
+                               PoolID = c(1:length(poolNames_SVCP), "K_bar"))
+
 setkey(poolNamesDT_SVCP, "PoolID")
 
 KPlot_SVCP[ , PoolID := gsub("(K)(\\[)(\\d)(\\])", "\\3", Parameter) ]
@@ -172,10 +172,7 @@ setnames(KPlot_SVCP,
          c("L95",  "L80", "median", "U80", "U95"))
 
 
-KPlot_SVCP[ , Pool := factor(Pool,
-                             levels = rev(c("Marseilles",  "Peoria", "LaGrange",
-                                            "Alton",
-                                            "Pool 26", "Pool 27", "across sites")))]
+KPlot_SVCP[ , Pool := factor(Pool)]
 
 
 KPlotGG_SVCP <- ggplot(data = KPlot_SVCP, aes(x = Pool, y = median)) +
@@ -192,7 +189,7 @@ ggsave("KPlotNot0_SVCP.pdf", KPlotGG_SVCP, width = 3, height = 4)
 MPlot_SVCP <- copy(stanOutOsummaryDT_SVCP[ grepl("M", Parameter), ])
 MPlot_SVCP
 poolNamesDT_SVCP <- data.table(Pool = c(poolNames_SVCP, "across sites"),
-                        PoolID = c(1:6, "M_bar"))
+                        PoolID = c(1:length(poolNames_SVCP), "M_bar"))
 setkey(poolNamesDT_SVCP, "PoolID")
 
 MPlot_SVCP[ , PoolID := gsub("(M)(\\[)(\\d)(\\])", "\\3", Parameter) ]
@@ -203,10 +200,7 @@ setnames(MPlot_SVCP,
          c("2.5%", "10%", "50%",    "90%", "97.5%"),
          c("L95",  "L80", "median", "U80", "U95"))
 
-MPlot_SVCP[ , Pool := factor(Pool,
-                        levels = rev(c("Marseilles",  "Peoria", "LaGrange",
-                                       "Alton",
-                                       "Pool 26", "Pool 27", "across sites")))]
+MPlot_SVCP[ , Pool := factor(Pool)]
 
 
 
@@ -250,31 +244,22 @@ allProjections_SVCP <- rbind(siteProjections_SVCP,
 
 stanOutOsummaryDT_SVCP[ !grepl("siteProjections|hyperProjection|t0|K|Linf|M|Omega|mu_beta_raw|tau|mu", Parameter), ]
 
-siteProjections_SVCP[ , Pool := factor(Pool,
-                                       levels = c("Marseilles",
-                                                  "Peoria", "LaGrange",
-                                                  "Alton",
-                                                  "Pool 26", "Pool 27"))]
+siteProjections_SVCP[ , Pool := factor(Pool)]
                                             
-dat3_SVCP[ , Pool := factor(Pool,
-                            levels = c("Marseilles",
-                                       "Peoria", "LaGrange",
-                                       "Alton",
-                                       "Pool 26", "Pool 27"))]
-
+dat3_SVCP[ , Pool := factor(Pool)]
 
 
 dataVBplot_SVCP <- ggplot() + 
-    geom_point(data = dat3_SVCP, aes(x = Age3, y = TLm), alpha = 0.25) +
+    geom_point(data = dat3_SVCP, aes(x = Age3, y = TLm), alpha = 0.1) +
     xlab("Age (years)") +
     ylab("Length (m)") + theme_minimal() + 
     geom_line(data = siteProjections_SVCP[  age < 13, ],
-              aes(x = age, y = mean), color = 'blue')   + 
+              aes(x = age - 1, y = mean), color = 'blue')   + 
     geom_ribbon(data = siteProjections_SVCP[  age < 13, ],
-                aes(x = age, ymin = L80, ymax = U80), fill = 'blue',
+                aes(x = age - 1, ymin = L80, ymax = U80), fill = 'blue',
                 alpha = 0.25)  +
     geom_ribbon(data = siteProjections_SVCP[  age < 13, ],
-                aes(x = age, ymin = L95, ymax = U95), fill = 'blue',
+                aes(x = age -1, ymin = L95, ymax = U95), fill = 'blue',
                 alpha = 0.25)  +
     facet_wrap( ~ Pool, nrow = 2) +
     scale_x_continuous(breaks = seq(0, max(ageProjection), by = 2))
@@ -283,20 +268,20 @@ print(dataVBplot_SVCP)
 ggsave("dataVBplotNot0_SVCP.pdf", dataVBplot_SVCP, width = 6, height = 6)
 
 hyperPlot_SVCP <-
-    ggplot(data = hyperProjection_SVCP[ age < 13, ], aes(x = age, y = mean)) +
+    ggplot(data = hyperProjection_SVCP[ age < 13, ], aes(x = age - 1, y = mean)) +
     geom_line(color = 'black', size = 1.3) +
-    geom_ribbon(aes(x = age, ymin = L95, ymax = U95), fill = 'grey50',
+    geom_ribbon(aes(x = age -1, ymin = L95, ymax = U95), fill = 'grey50',
                 alpha = 0.25) + 
-    geom_ribbon(aes(x = age, ymin = L80, ymax = U80), fill = 'grey50',
+    geom_ribbon(aes(x = age -1, ymin = L80, ymax = U80), fill = 'grey50',
                 alpha = 0.25) +
     geom_line(data = siteProjections_SVCP[ age < 13, ],
-              aes(x = age, y = mean, color = Pool),
+              aes(x = age -1, y = mean, color = Pool),
               size = 1.1) +
     xlab("Age (years)") +
     ylab("Length (m)") + theme_minimal() + 
     scale_x_continuous(breaks = seq(0, max(ageProjection), by = 2)) + 
     scale_color_manual( values = c("red", "blue", "seagreen",
-                                   "orange", "skyblue", "navyblue")) 
+                                   "orange", "skyblue", "navyblue", "wheat2")) 
 print(hyperPlot_SVCP)
 ggsave("hyperPlotNot0_SVCP.pdf", hyperPlot_SVCP, width = 6, height = 4)
 ggsave("hyperPlotNot0_SVCP.jpg", hyperPlot_SVCP, width = 6, height = 4)
@@ -304,9 +289,7 @@ ggsave("hyperPlotNot0_SVCP.jpg", hyperPlot_SVCP, width = 6, height = 4)
 
 
 ## Bighead carp analysis 
-
-dat3_BHCP <- dat2[ Pool %in% c( "Peoria", "LaGrange", "Alton",
-                              "Marseilles", "Pool 26", "Pool 27") ,][ Species == "BHCP", ]
+dat3_BHCP <- dat2[ Species == "BHCP", ]
 dat3_BHCP[ , Pool := factor(Pool)]
 dat3_BHCP[ , PoolID := as.numeric(Pool)]
 dat3_BHCP[ , .N, by = .(Pool, Species)]
@@ -344,6 +327,11 @@ stanData_BHCP <- list(
     ageProject = ageProjection
     )
 
+dat3_BHCP[ , unique(PoolID)]
+dat3_BHCP[ , unique(Pool)]
+
+dat[ , .N, by = .( Pool, Species)]
+dat2[ , .N, by = .( Pool, Species)]
 names(stanData_BHCP)
 
 ## Model takes ~0.25 hrs to run.
@@ -355,7 +343,7 @@ names(stanData_BHCP)
 ## save(stanOutO_BHCP, file = "vonBfitNot0_BHCP.RData")
 load("vonBfitNot0_BHCP.RData")               
 
-stanOutO_BHCP
+
 stanOutOsummary_BHCP <- 
     summary(stanOutO_BHCP, probs = c(0.025, 0.1, 0.50, 0.9, 0.975))
 
@@ -372,13 +360,13 @@ stanOutOsummaryDT_BHCP[ , Parameter := rownames(stanOutOsummary_BHCP[[1]])]
 plot(stanOutO_BHCP, pars =c("Linf_bar", "K_bar", "Linf"))
 
 poolNames_BHCP <- dat3_BHCP[ , levels(Pool)]
-
+poolNames_BHCP
 ## Plot parameter estimates
 
 ## Plot linf
 LinfPlot_BHCP <- copy(stanOutOsummaryDT_BHCP[ grepl("Linf", Parameter), ])
 poolNamesDT_BHCP <- data.table(Pool = c(poolNames_BHCP, "across sites"),
-                        PoolID = c(1:6, "Linf_bar"))
+                        PoolID = c(1:length(poolNames_BHCP), "Linf_bar"))
 setkey(poolNamesDT_BHCP, "PoolID")
 
 LinfPlot_BHCP[ , PoolID := gsub("(Linf)(\\[)(\\d)(\\])", "\\3", Parameter) ]
@@ -389,10 +377,10 @@ setnames(LinfPlot_BHCP,
          c("2.5%", "10%", "50%",    "90%", "97.5%"),
          c("L95",  "L80", "median", "U80", "U95"))
 
-LinfPlot_BHCP[ , Pool := factor(Pool,
-                           levels = rev(c("Marseilles",  "Peoria", "LaGrange",
-                                          "Alton",
-                                          "Pool 26", "Pool 27", "across sites")))]
+LinfPlot_BHCP[ , Pool := factor(Pool)]
+                           ## levels = rev(c("Marseilles",  "Peoria", "LaGrange",
+                           ##                "Alton",
+                           ##                "Pool 26", "Pool 27", "across sites")))]
 
 LinfPlotGG_BHCP <- ggplot(data = LinfPlot_BHCP, aes(x = Pool, y = median)) +
     geom_point(size = 1.5) +
@@ -407,7 +395,7 @@ ggsave("LinfPlotNot0_BHCP.pdf", LinfPlotGG_BHCP, width = 3, height = 4)
 ## Plot growth rates
 KPlot_BHCP <- copy(stanOutOsummaryDT_BHCP[ grepl("K", Parameter), ])
 poolNamesDT_BHCP <- data.table(Pool = c(poolNames_BHCP, "across sites"),
-                        PoolID = c(1:6, "K_bar"))
+                        PoolID = c(1:length(poolNames_BHCP), "K_bar"))
 setkey(poolNamesDT_BHCP, "PoolID")
 
 KPlot_BHCP[ , PoolID := gsub("(K)(\\[)(\\d)(\\])", "\\3", Parameter) ]
@@ -419,10 +407,10 @@ setnames(KPlot_BHCP,
          c("L95",  "L80", "median", "U80", "U95"))
 
 
-KPlot_BHCP[ , Pool := factor(Pool,
-                             levels = rev(c("Marseilles",  "Peoria", "LaGrange",
-                                            "Alton",
-                                            "Pool 26", "Pool 27", "across sites")))]
+KPlot_BHCP[ , Pool := factor(Pool)]
+                             ## levels = rev(c("Marseilles",  "Peoria", "LaGrange",
+                             ##                "Alton",
+                             ##                "Pool 26", "Pool 27", "across sites")))]
 
 
 KPlotGG_BHCP <- ggplot(data = KPlot_BHCP, aes(x = Pool, y = median)) +
@@ -437,9 +425,8 @@ ggsave("KPlotNot0_BHCP.pdf", KPlotGG_BHCP, width = 3, height = 4)
 
 ## Plot natural mortality across sites
 MPlot_BHCP <- copy(stanOutOsummaryDT_BHCP[ grepl("M", Parameter), ])
-MPlot_BHCP
 poolNamesDT_BHCP <- data.table(Pool = c(poolNames_BHCP, "across sites"),
-                        PoolID = c(1:6, "M_bar"))
+                               PoolID = c(1:length(poolNames_BHCP), "M_bar"))
 setkey(poolNamesDT_BHCP, "PoolID")
 
 MPlot_BHCP[ , PoolID := gsub("(M)(\\[)(\\d)(\\])", "\\3", Parameter) ]
@@ -450,10 +437,10 @@ setnames(MPlot_BHCP,
          c("2.5%", "10%", "50%",    "90%", "97.5%"),
          c("L95",  "L80", "median", "U80", "U95"))
 
-MPlot_BHCP[ , Pool := factor(Pool,
-                        levels = rev(c("Marseilles",  "Peoria", "LaGrange",
-                                       "Alton",
-                                       "Pool 26", "Pool 27", "across sites")))]
+MPlot_BHCP[ , Pool := factor(Pool)]
+                        ## levels = rev(c("Marseilles",  "Peoria", "LaGrange",
+                        ##                "Alton",
+                        ##                "Pool 26", "Pool 27", "across sites")))]
 
 
 
@@ -497,31 +484,31 @@ allProjections_BHCP <- rbind(siteProjections_BHCP,
 
 stanOutOsummaryDT_BHCP[ !grepl("siteProjections|hyperProjection|t0|K|Linf|M|Omega|mu_beta_raw|tau|mu", Parameter), ]
 
-siteProjections_BHCP[ , Pool := factor(Pool,
-                                       levels = c("Marseilles",
-                                                  "Peoria", "LaGrange",
-                                                  "Alton",
-                                                  "Pool 26", "Pool 27"))]
+siteProjections_BHCP[ , Pool := factor(Pool)]
+                                       ## levels = c("Marseilles",
+                                       ##            "Peoria", "LaGrange",
+                                       ##            "Alton",
+                                       ##            "Pool 26", "Pool 27"))]
                                             
-dat3_BHCP[ , Pool := factor(Pool,
-                            levels = c("Marseilles",
-                                       "Peoria", "LaGrange",
-                                       "Alton",
-                                       "Pool 26", "Pool 27"))]
+dat3_BHCP[ , Pool := factor(Pool)]
+                            ## levels = c("Marseilles",
+                            ##            "Peoria", "LaGrange",
+                            ##            "Alton",
+                            ##            "Pool 26", "Pool 27"))]
 
 
 
 dataVBplot_BHCP <- ggplot() + 
-    geom_point(data = dat3_BHCP, aes(x = Age3, y = TLm), alpha = 0.25) +
+    geom_point(data = dat3_BHCP, aes(x = Age3 -1, y = TLm), alpha = 0.1) +
     xlab("Age (years)") +
     ylab("Length (m)") + theme_minimal() + 
     geom_line(data = siteProjections_BHCP[  age < 13, ],
-              aes(x = age, y = mean), color = 'blue')   + 
+              aes(x = age -1, y = mean), color = 'blue')   + 
     geom_ribbon(data = siteProjections_BHCP[  age < 13, ],
-                aes(x = age, ymin = L80, ymax = U80), fill = 'blue',
+                aes(x = age-1, ymin = L80, ymax = U80), fill = 'blue',
                 alpha = 0.25)  +
     geom_ribbon(data = siteProjections_BHCP[  age < 13, ],
-                aes(x = age, ymin = L95, ymax = U95), fill = 'blue',
+                aes(x = age-1, ymin = L95, ymax = U95), fill = 'blue',
                 alpha = 0.25)  +
     facet_wrap( ~ Pool, nrow = 2) +
     scale_x_continuous(breaks = seq(0, max(ageProjection), by = 2))
@@ -530,14 +517,15 @@ print(dataVBplot_BHCP)
 ggsave("dataVBplotNot0_BHCP.pdf", dataVBplot_BHCP, width = 6, height = 6)
 
 hyperPlot_BHCP <-
-    ggplot(data = hyperProjection_BHCP[ age < 13, ], aes(x = age, y = mean)) +
+    ggplot(data = hyperProjection_BHCP[ age < 13, ],
+           aes(x = age-1, y = mean)) +
     geom_line(color = 'black', size = 1.3) +
-    geom_ribbon(aes(x = age, ymin = L95, ymax = U95), fill = 'grey50',
+    geom_ribbon(aes(x = age-1, ymin = L95, ymax = U95), fill = 'grey50',
                 alpha = 0.25) + 
-    geom_ribbon(aes(x = age, ymin = L80, ymax = U80), fill = 'grey50',
+    geom_ribbon(aes(x = age-1, ymin = L80, ymax = U80), fill = 'grey50',
                 alpha = 0.25) +
     geom_line(data = siteProjections_BHCP[ age < 13, ],
-              aes(x = age, y = mean, color = Pool),
+              aes(x = age-1, y = mean, color = Pool),
               size = 1.1) +
     xlab("Age (years)") +
     ylab("Length (m)") + theme_minimal() + 

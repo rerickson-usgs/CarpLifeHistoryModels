@@ -6,7 +6,7 @@ library(rstan) # used to fit Bayesian model
 options(mc.cores = parallel::detectCores())
 
 ## Read in a format data
-dat <- fread("../Demographics_01.csv")
+dat <- fread("../Demographics_080318.csv")
 
 dat[ , Sampdate :=ymd(Sampdate)] 
 dat[,  FL := as.numeric(FL)]
@@ -47,8 +47,7 @@ ggplot(dat2[ Species %in% c( "SVCP", "BHCP"), ], aes(x = TL/1000, y = WT/1000)) 
 
 dat2[ Species == "SVCP", .N, by = Pool][ order(N, decreasing = TRUE), ]
 
-dat3_SVCP<- dat2[ Pool %in% c("LaGrange", "Alton", "Peoria",
-                          "Marseilles", "Pool 26", "Pool 27") ,][ Species == "SVCP", ]
+dat3_SVCP<- dat2[ Species == "SVCP", ]
 
 dat3_SVCP[ , Pool := factor(Pool)]
 dat3_SVCP[ , PoolID := as.numeric(Pool)]
@@ -197,8 +196,7 @@ ggIntercept_SVCP <-
     geom_linerange( aes(ymin = l80, ymax = u80), size = 1.2) + 
     coord_flip() +
     xlab("Pool") +
-    ylab(expression(atop("Length-weight intercept",
-                         "estimate ("*log[10]*log[10]*" scale)"))) +
+    ylab(expression("Intercept estimate ("*log[10](weight)*")")) +
     theme_minimal()
 
 ggIntercept_SVCP
@@ -245,7 +243,7 @@ ggSlope_SVCP <-
     coord_flip() +
     xlab("Pool") +
     ylab(expression(atop("Length-weight slope",
-                         "estimate ("*log[10]*log[10]*" scale)"))) +
+                         "estimate ("*frac(log[10](weight),log[10](length))*")"))) +
     theme_minimal()
 
 ggSlope_SVCP
@@ -302,7 +300,7 @@ GGlwData_SVCP <- ggplot() +
     geom_point(data = dat3_SVCP, aes( x = TLmL10,  y = WTkgL10)) +
     geom_line(data = siteProjectionsDT_SVCP, aes(x = length, y = mean),
               color = 'blue', size = 1.1) +
-    facet_grid( ~ Pool) +
+    facet_wrap( ~ Pool , nrow = 2) +
     ## geom_ribbon(data = siteProjectionsDT,
     ##             aes(x = length,  ymin = l95, ymax = u95), color = 'orange', alpha = 0.5) +
     ylab(expression(log[10]*"(weight kg)")) +
@@ -359,8 +357,7 @@ ggsave("lengthWeightHyper_SVCP.pdf", ggHyper_SVCP, width = 6, height = 4)
 
 dat2[ Species == "BHCP", .N, by = Pool][ order(N, decreasing = TRUE), ]
 
-dat3_BHCP<- dat2[ Pool %in% c("LaGrange", "Alton", "Peoria",
-                          "Marseilles", "Pool 26", "Pool 27") ,][ Species == "BHCP", ]
+dat3_BHCP<- dat2[ Species == "BHCP", ]
 
 dat3_BHCP[ , Pool := factor(Pool)]
 dat3_BHCP[ , PoolID := as.numeric(Pool)]
@@ -452,7 +449,7 @@ stanData_BHCP <- list(
 ##                      control = list(adapt_delta = 0.8))
 ## save(stanOut_BHCP, file = "lengthWeight2_BHCP.RData")
 load("lengthWeight2_BHCP.RData")
-stanOut_BHCP
+## stanOut_BHCP
 
 ##########################################################
 ##########################################################
@@ -473,13 +470,13 @@ stanOutsummary_BHCP[[1]][grepl("Omega", rownames(summary(stanOut_BHCP)[[1]])), ]
 ################
 ## Plot intercepts
 intercepts_BHCP <- data.frame(stanOutsummary_BHCP[[1]][
-    grepl("(beta|gamma)(\\[\\d,1\\])",
+    grepl("(beta|gamma)(\\[\\d{1,2},1\\])",
           rownames(summary(stanOut_BHCP)[[1]])), ])
 intercepts_BHCP$ID = gsub("\\,1]|\\[", "", rownames(intercepts_BHCP))
 intercepts_BHCP
 
 groupPredictKey_BHCP <-
-    dat3[ , .(PoolID =mean(PoolID)), by = Pool][ order(PoolID),]
+    dat3_BHCP[ , .(PoolID =mean(PoolID)), by = Pool][ order(PoolID),]
 groupPredictKey_BHCP
 dat3_BHCP[ , .(PoolID, Pool)]
 groupPredictKey_BHCP[ , PoolID := paste0("beta", PoolID)]
@@ -509,8 +506,7 @@ ggIntercept_BHCP <-
     geom_linerange( aes(ymin = l80, ymax = u80), size = 1.2) + 
     coord_flip() +
     xlab("Pool") +
-    ylab(expression(atop("Length-weight intercept",
-                         "estimate ("*log[10]*log[10]*" scale)"))) +
+    ylab(expression("Intercept estimate ("*log[10](weight)*")"))  +
     theme_minimal()
 
 ggIntercept_BHCP
@@ -519,7 +515,7 @@ ggsave("intercept_BHCP.pdf", ggIntercept_BHCP, width = 4, height = 6)
 ################
 ## Plot slopes
 slopes_BHCP <-
-    data.frame(stanOutsummary_BHCP[[1]][grepl("(beta|gamma)(\\[\\d,2\\])",
+    data.frame(stanOutsummary_BHCP[[1]][grepl("(beta|gamma)(\\[\\d{1,2},2\\])",
                                               rownames(summary(stanOut_BHCP)[[1]])),
                                         ])
 slopes_BHCP$ID = gsub("\\,2]|\\[", "", rownames(slopes_BHCP))
@@ -557,7 +553,7 @@ ggSlope_BHCP <-
     coord_flip() +
     xlab("Pool") +
     ylab(expression(atop("Length-weight slope",
-                         "estimate ("*log[10]*log[10]*" scale)"))) +
+                         "estimate ("*frac(log[10](weight),log[10](length))*")"))) +
     theme_minimal()
 
 ggSlope_BHCP
@@ -614,14 +610,14 @@ GGlwData_BHCP <- ggplot() +
     geom_point(data = dat3_BHCP, aes( x = TLmL10,  y = WTkgL10)) +
     geom_line(data = siteProjectionsDT_BHCP, aes(x = length, y = mean),
               color = 'blue', size = 1.1) +
-    facet_grid( ~ Pool) +
+    facet_wrap( ~ Pool, nrow = 2) +
     ## geom_ribbon(data = siteProjectionsDT,
     ##             aes(x = length,  ymin = l95, ymax = u95), color = 'orange', alpha = 0.5) +
     ylab(expression(log[10]*"(weight kg)")) +
     xlab(expression(log[10]*"(length m)")) +
     theme_minimal()
 GGlwData_BHCP
-ggsave("lengthWeightData_BHCP.pdf", GGlwData_BHCP, width = 8, height = 4)
+ggsave("lengthWeightData_BHCP.pdf", GGlwData_BHCP, width = 8, height = 6)
 
 ## exract out hyper parameter
 yHyper_BHCP <-
@@ -654,8 +650,9 @@ ggHyper_BHCP <-
     ylab(expression(log[10]*"(weight kg)")) +
     xlab(expression(log[10]*"(length m)")) +
     theme_minimal() +
-    scale_color_manual( values = c("red", "blue", "seagreen",
-                                   "orange", "skyblue", "navyblue")) +
+    scale_color_hue(l=40) + 
+    ## scale_color_manual( values = c("red", "blue", "seagreen",
+    ##                                "orange", "skyblue", "navyblue")) +
     geom_ribbon(data = yHyperDT_BHCP,
                 aes(x = length, ymin = l95, ymax = u95),
                 fill = 'grey', alpha = 0.5) +

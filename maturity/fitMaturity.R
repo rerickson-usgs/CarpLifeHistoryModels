@@ -7,7 +7,7 @@ library(rstan) # used to fit Bayesian model
 options(mc.cores = parallel::detectCores())
 
 ## Read in a format data
-dat <- fread("../Demographics_01.csv")
+dat <- fread("../Demographics_080318.csv")
 dat[ , Sampdate :=ymd(Sampdate)] 
 dat[,  FL := as.numeric(FL)]
 dat2 <- dat[ Maturity != "NA",] 
@@ -15,6 +15,7 @@ dat2[ , Maturity := factor(Maturity)]
 dat2[ , M2 := as.numeric(Maturity) - 1]
 dat2[ , TLm := TL / 1000]
 dat2[ , WTkg := WT/1000]
+dat2[ , GonadWT := as.numeric(GonadWT)]
 dat2[ , GonadScaled := GonadWT/max(GonadWT, na.rm = TRUE), by = Species]
 dat2[ , Month := month(Sampdate)]
 dat2[ , GonadWTkg := GonadWT/1000]
@@ -91,7 +92,7 @@ stanDataSVCP <- list(
 
 names(stanDataSVCP)
 
-## stanOutSVCP <- stan(file = "maturity.stan", data = stanDataSVCP, chains = 4, iter = 1000,
+## stanOutSVCP <- stan(file = "maturity.stan", data = stanDataSVCP, chains = 4, iter = 6000,
 ##                     control = list(adapt_delta = 0.8))
 ## save(file = "logisticRegressionSVCP.Rda", x = stanOutSVCP)
 load("logisticRegressionSVCP.Rda")
@@ -171,7 +172,7 @@ stanDataBHCP <- list(
 
 names(stanDataBHCP)
 
-## stanOutBHCP <- stan(file = "maturity.stan", data = stanDataBHCP, chains = 4, iter = 1000,
+## stanOutBHCP <- stan(file = "maturity.stan", data = stanDataBHCP, chains = 4, iter = 6000,
 ##                     control = list(adapt_delta = 0.8))
 ## save(file = "logisticRegressionBHCP.Rda", x = stanOutBHCP)
 load("logisticRegressionBHCP.Rda")
