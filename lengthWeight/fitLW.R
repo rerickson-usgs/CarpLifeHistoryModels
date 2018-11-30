@@ -12,18 +12,21 @@ dat[ , Sampdate :=ymd(Sampdate)]
 dat[,  FL := as.numeric(FL)]
 
 dat[ , unique(Species)]
+dat[ , unique(Pool)]
+dat[ Pool == "OR(pool 27)", Pool := "Pool 27"]
+dat[ Pool == "Dresden", Pool := "Dresden Island"]
 
 ## Explore data with plots and do some manipulation
-ggplot(data  = dat[Species %in% c( "SVCP", "BHCP"), ],
-       aes(x = TL, y = WT)) +
-    geom_point(alpha = 0.5) +
-    stat_smooth(method = 'lm') +
-    facet_grid( ~ Species) +
-    theme_minimal() +
-    ylab("Weight") +
-    xlab("Total length") +
-    scale_y_log10() + 
-    scale_x_log10()
+## ggplot(data  = dat[Species %in% c( "SVCP", "BHCP"), ],
+##        aes(x = TL, y = WT)) +
+##     geom_point(alpha = 0.5) +
+##     stat_smooth(method = 'lm') +
+##     facet_grid( ~ Species) +
+##     theme_minimal() +
+##     ylab("Weight") +
+##     xlab("Total length") +
+##     scale_y_log10() + 
+##     scale_x_log10()
 
 
 ## Plot by pools
@@ -31,27 +34,30 @@ dat2 <- dat[ !is.na(TL) & !is.na(WT), ]
 dat2[ , PoolID := as.numeric(Pool)]
 dat2[ , .N, by = Pool]
 
-dat2[ , mean(WT, na.rm = TRUE), by = .(Pool)]
+## dat2[ , mean(WT, na.rm = TRUE), by = .(Pool)]
+
+## ggplot(dat2[ Species %in% c( "SVCP", "BHCP"), ], aes(x = TL/1000, y = WT/1000)) +
+##     geom_point(alpha = 0.25) +
+##     facet_grid( Species~Pool) +
+##     xlab("Total length (m)") +
+##     ylab("Weight (kg)") + theme_minimal()+
+##     scale_y_log10() +
+##     scale_x_log10()
 
 
-ggplot(dat2[ Species %in% c( "SVCP", "BHCP"), ], aes(x = TL/1000, y = WT/1000)) +
-    geom_point(alpha = 0.25) +
-    facet_grid( Species~Pool) +
-    xlab("Total length (m)") +
-    ylab("Weight (kg)") + theme_minimal()+
-    scale_y_log10() +
-    scale_x_log10()
-
+## dat2[ Species %in% c( "SVCP", "BHCP"), .N, by = .(Species, Pool)][ order(N, decreasing = TRUE),]
 ## Get data from Stan
 ## Fit silver carp SVCP
 
-dat2[ Species == "SVCP", .N, by = Pool][ order(N, decreasing = TRUE), ]
+## dat2[ Species == "SVCP", .N, by = Pool][ order(N, decreasing = TRUE), ]
 
 dat3_SVCP<- dat2[ Species == "SVCP", ]
+## dat3_SVCP[ ,summary(Pool)]
+
 
 dat3_SVCP[ , Pool := factor(Pool)]
 dat3_SVCP[ , PoolID := as.numeric(Pool)]
-dat3_SVCP[ , .N, by = .(Pool, Species)]
+## dat3_SVCP[ , .N, by = .(Pool, Species)]
 
 ## Convert to M from mm to stabilisze results
 
@@ -100,30 +106,32 @@ s2_SVCP <- list(
 
 ## run model with correlated structure
 
-x_SVCP  = dat3_SVCP[ , model.matrix( ~ TLmL10)]
-x_SVCP[1, ]
+x_SVCP  = dat3_SVCP[ , model.matrix( ~ I(TLm^3)]
+## x_SVCP[1, ]
 
 groupPredictKey_SVCP <-
     dat3_SVCP[ , .(PoolID =mean(PoolID)), by = Pool][ order(PoolID),]
 groupPredictKey_SVCP
-dat3_SVCP[ , .(PoolID, Pool)]
+## dat3_SVCP[ , .(PoolID, Pool)]
 
 u_SVCP  = matrix(rep(1, length(dat3_SVCP[, unique(PoolID)])), ncol = 1)
-u_SVCP
+## u_SVCP
 
-## output
-dat3_SVCP[ , summary(WTkgL10)]
-## input
-dat3_SVCP[ , summary(TLmL10)]
+## ## output
+## dat3_SVCP[ , summary(WTkgL10)]
+## ## input
+## dat3_SVCP[ , summary(TLmL10)]
 
-xProject_SVCP <- seq(-1, 0.25, length.out = 10)
-xProject_SVCP
+xProject_SVCP_raw <- seq(0.001, 1.5, length.out = 100)
+xProject_SVCP <- log10(xProject_SVCP_raw)
+
+## xProject_SVCP                           
 
 stanData_SVCP <- list(
     N  = dim(dat3_SVCP)[1], # Num obs
     J  = length(dat3_SVCP[, unique(PoolID)]), # num groups 
     L  = 1, # num group predictors 
-    y  = dat3_SVCP[ , WTkgL10], # observations 
+    y  = dat3_SVCP[ , WTkg], # observations 
     jj = dat3_SVCP[ , PoolID], # groups for each indivdual 
     x  = x_SVCP, # individual predictor matrix 
     u  = u_SVCP, # group predictors 
@@ -133,12 +141,12 @@ stanData_SVCP <- list(
 )
 
 ## ## Only run if needed
-## stanOut_SVCP <- stan(file = "lengthWeight.stan",
-##                      data = stanData_SVCP,
-##                      chains = 4, iter = 6000,
-##                      control = list(adapt_delta = 0.8))
-## save(stanOut_SVCP, file = "lengthWeight2_SVCP.RData")
-load("lengthWeight2_SVCP.RData")
+stanOut_SVCP <- stan(file = "lengthWeight.stan",
+                     data = stanData_SVCP,
+                     chains = 4, iter = 6000,
+                     control = list(adapt_delta = 0.8))
+save(stanOut_SVCP, file = "lengthWeight3rd_SVCP.RData")
+load("lengthWeight3rd.RData")
 stanOut_SVCP
 
 ##########################################################
@@ -151,29 +159,30 @@ stanOut_SVCP
 
 stanOutsummary_SVCP <- summary(stanOut_SVCP,
                                probs = c(0.025, 0.1, 0.50, 0.9, 0.975))
-stanOutsummary_SVCP[[1]][grepl("beta", rownames(summary(stanOut_SVCP)[[1]])), ]
-stanOutsummary_SVCP[[1]][grepl("gamma", rownames(summary(stanOut_SVCP)[[1]])), ]
-stanOutsummary_SVCP[[1]][grepl("tau", rownames(summary(stanOut_SVCP)[[1]])), ]
-stanOutsummary_SVCP[[1]][grepl("Omega", rownames(summary(stanOut_SVCP)[[1]])), ]
+## stanOutsummary_SVCP[[1]][grepl("beta", rownames(summary(stanOut_SVCP)[[1]])), ]
+## stanOutsummary_SVCP[[1]][grepl("gamma", rownames(summary(stanOut_SVCP)[[1]])), ]
+## stanOutsummary_SVCP[[1]][grepl("tau", rownames(summary(stanOut_SVCP)[[1]])), ]
+## stanOutsummary_SVCP[[1]][grepl("Omega", rownames(summary(stanOut_SVCP)[[1]])), ]
 
 
 ################
 ## Plot intercepts
 intercepts_SVCP <- data.frame(stanOutsummary_SVCP[[1]][
-    grepl("(beta|gamma)(\\[\\d,1\\])",
+    grepl("(beta|gamma)(\\[\\d+,1\\])",
           rownames(summary(stanOut_SVCP)[[1]])), ])
 intercepts_SVCP$ID = gsub("\\,1]|\\[", "", rownames(intercepts_SVCP))
-intercepts_SVCP
+## intercepts_SVCP
+groupPredictKey_SVCP
 
 groupPredictKey_SVCP <-
-    dat3[ , .(PoolID =mean(PoolID)), by = Pool][ order(PoolID),]
-groupPredictKey_SVCP
-dat3_SVCP[ , .(PoolID, Pool)]
+    copy(dat3_SVCP[ , .(PoolID =mean(PoolID)), by = Pool][ order(PoolID),])
+## groupPredictKey_SVCP
+## dat3_SVCP[ , .(PoolID, Pool)]
 groupPredictKey_SVCP[ , PoolID := paste0("beta", PoolID)]
-groupPredictKey_SVCP <- rbind(groupPredictKey_SVCP,
-                              data.table(Pool = "Hyper-parameter",
-                                         PoolID = 'gamma1'))
-groupPredictKey_SVCP
+groupPredictKey_SVCP <- copy(rbind(groupPredictKey_SVCP,
+                                   data.table(Pool = "Hyper-parameter",
+                                              PoolID = 'gamma1')))
+## groupPredictKey_SVCP
 
 interceptsDT_SVCP <- data.table(intercepts_SVCP)
 setkey(interceptsDT_SVCP, "ID")
@@ -186,9 +195,7 @@ setnames(interceptsDT_SVCP, "X97.5.", "u95")
 setnames(interceptsDT_SVCP, "X10.",  "l80")
 setnames(interceptsDT_SVCP, "X90.",  "u80")
 
-
-library(ggplot2)
-
+## interceptsDT_SVCP
 ggIntercept_SVCP <-
     ggplot(interceptsDT_SVCP, aes(x = Pool, y = mean)) +
     geom_point(size = 1.5) +
@@ -199,28 +206,28 @@ ggIntercept_SVCP <-
     ylab(expression("Intercept estimate ("*log[10](weight)*")")) +
     theme_minimal()
 
-ggIntercept_SVCP
+## ggIntercept_SVCP
 ggsave("intercept_SVCP.pdf", ggIntercept_SVCP, width = 4, height = 6)
 
 ################
 ## Plot slopes
 slopes_SVCP <-
-    data.frame(stanOutsummary_SVCP[[1]][grepl("(beta|gamma)(\\[\\d,2\\])",
+    data.frame(stanOutsummary_SVCP[[1]][grepl("(beta|gamma)(\\[\\d+,2\\])",
                                               rownames(summary(stanOut_SVCP)[[1]])),
                                         ])
 slopes_SVCP$ID = gsub("\\,2]|\\[", "", rownames(slopes_SVCP))
-slopes_SVCP
+## slopes_SVCP
 
 groupPredictKey_SVCP <-
     dat3_SVCP[ , .(PoolID =mean(PoolID)), by = Pool][ order(PoolID),]
-groupPredictKey_SVCP
+## groupPredictKey_SVCP
 dat3_SVCP[ , .(PoolID, Pool)]
 
 groupPredictKey_SVCP[ , PoolID := paste0("beta", PoolID)]
 groupPredictKey_SVCP <-
     rbind(groupPredictKey_SVCP,
           data.table(Pool = "Hyper-parameter", PoolID = 'gamma1'))
-groupPredictKey_SVCP
+## groupPredictKey_SVCP
 
 slopesDT_SVCP <- data.table(slopes_SVCP)
 setkey(slopesDT_SVCP, "ID")
@@ -233,7 +240,7 @@ setnames(slopesDT_SVCP, "X97.5.", "u95")
 setnames(slopesDT_SVCP, "X10.",  "l80")
 setnames(slopesDT_SVCP, "X90.",  "u80")
 
-slopesDT_SVCP
+## slopesDT_SVCP
 
 ggSlope_SVCP <-
     ggplot(slopesDT_SVCP, aes(x = Pool, y = mean)) +
@@ -246,7 +253,7 @@ ggSlope_SVCP <-
                          "estimate ("*frac(log[10](weight),log[10](length))*")"))) +
     theme_minimal()
 
-ggSlope_SVCP
+## ggSlope_SVCP
 ggsave("slope_SVCP.pdf", ggSlope_SVCP, width = 4, height = 6)
 
 ## plot projections 
@@ -257,12 +264,12 @@ siteProjections_SVCP <-
 siteProjections_SVCP$parameter <- rownames(siteProjections_SVCP)
 siteProjectionsDT_SVCP <- data.table(siteProjections_SVCP)
 siteProjectionsDT_SVCP[ ,
-                       PoolID := gsub("yProject\\[(\\d{1,2}),(\\d{1,2})\\]",
+                       PoolID := gsub("yProject\\[(\\d+),(\\d+)\\]",
                                       "\\1", parameter)]
 siteProjectionsDT_SVCP[ ,
                        lengthID :=
                            as.numeric(
-                               gsub("yProject\\[(\\d{1,2}),(\\d{1,2})\\]",
+                               gsub("yProject\\[(\\d+),(\\d+)\\]",
                                     "\\2", parameter))]
 
 setnames( siteProjectionsDT_SVCP, "X2.5.",  "l95")
@@ -271,8 +278,8 @@ setnames( siteProjectionsDT_SVCP, "X10.",  "l80")
 setnames( siteProjectionsDT_SVCP, "X90.",  "u80")
 
 ## Merge in length
-lengthDT_SVCP <- data.table(lengthID = 1:length(xProject_SVCP),
-                            length = xProject_SVCP)
+lengthDT_SVCP <- data.table(lengthID = 1:length(xProject_SVCP_raw),
+                            length = xProject_SVCP_raw)
 setkey(lengthDT_SVCP, "lengthID")
 setkey(siteProjectionsDT_SVCP, "lengthID")
 siteProjectionsDT_SVCP <- siteProjectionsDT_SVCP[lengthDT_SVCP]
@@ -295,7 +302,6 @@ siteProjectionsDT_SVCP <-
 
 head(siteProjectionsDT_SVCP[ , length >= poolMin])
 
-
 GGlwData_SVCP <- ggplot() +
     geom_point(data = dat3_SVCP, aes( x = TLmL10,  y = WTkgL10)) +
     geom_line(data = siteProjectionsDT_SVCP, aes(x = length, y = mean),
@@ -306,10 +312,10 @@ GGlwData_SVCP <- ggplot() +
     ylab(expression(log[10]*"(weight kg)")) +
     xlab(expression(log[10]*"(length m)")) +
     theme_minimal()
-GGlwData_SVCP
+## GGlwData_SVCP
 ggsave("lengthWeightData_SVCP.pdf", GGlwData_SVCP, width = 8, height = 4)
 
-## exract out hyper parameter
+## exract out hyper-parameter
 yHyper_SVCP <-
     data.frame(stanOutsummary_SVCP[[1]][grepl(
                                       "yHyper",
@@ -317,7 +323,7 @@ yHyper_SVCP <-
 yHyper_SVCP$parameter = rownames(yHyper_SVCP)
 yHyperDT_SVCP <- data.table(yHyper_SVCP)
 yHyperDT_SVCP[ ,
-              lengthID := as.numeric(gsub("yHyper\\[(\\d{1,2})\\]",
+              lengthID := as.numeric(gsub("yHyper\\[(\\d+)\\]",
                                           "\\1", parameter))]
 setnames( yHyperDT_SVCP, "X2.5.",  "l95")
 setnames( yHyperDT_SVCP, "X97.5.", "u95")
@@ -325,8 +331,8 @@ setnames( yHyperDT_SVCP, "X10.",  "l80")
 setnames( yHyperDT_SVCP, "X90.",  "u80")
 
 ## Merge in length
-lengthDT_SVCP <- data.table(lengthID = 1:length(xProject_SVCP),
-                            length = xProject_SVCP)
+lengthDT_SVCP <- data.table(lengthID = 1:length(xProject_SVCP_raw),
+                            length = xProject_SVCP_raw)
 setkey(lengthDT_SVCP, "lengthID")
 setkey(yHyperDT_SVCP, "lengthID")
 yHyperDT_SVCP <-
@@ -336,28 +342,25 @@ yHyperDT_SVCP <-
 ggHyper_SVCP <-
     ggplot() +
     geom_line(data = siteProjectionsDT_SVCP,
-              aes(x = length, y = mean, color = Pool), size = 1.1) +
+              aes(x = length, y = mean, group = Pool), size = 1, alpha = 0.5, color = 'blue') +
     ylab(expression(log[10]*"(weight kg)")) +
     xlab(expression(log[10]*"(length m)")) +
     theme_minimal() +
-    scale_color_manual( values = c("red", "blue", "seagreen",
-                                   "orange", "skyblue", "navyblue")) +
     geom_ribbon(data = yHyperDT_SVCP,
                 aes(x = length, ymin = l95, ymax = u95),
-                fill = 'grey', alpha = 0.5) +
+                fill = 'red', alpha = 0.75) +
     geom_line(data = yHyperDT_SVCP,
               aes(x = length, y = mean),
               color = 'black', size = 1)
 
-ggHyper_SVCP
+## ggHyper_SVCP
 ggsave("lengthWeightHyper_SVCP.pdf", ggHyper_SVCP, width = 6, height = 4) 
 
 
 ## bighead carp model
-
 dat2[ Species == "BHCP", .N, by = Pool][ order(N, decreasing = TRUE), ]
 
-dat3_BHCP<- dat2[ Species == "BHCP", ]
+dat3_BHCP <- dat2[ Species == "BHCP", ]
 
 dat3_BHCP[ , Pool := factor(Pool)]
 dat3_BHCP[ , PoolID := as.numeric(Pool)]
@@ -379,11 +382,11 @@ dat3_BHCP[ , WTkgL10 := log10(WTkg)]
 
 ## build simple length-weight model
 ## with hardcoded regression 
-s1_BHCP <- list(
-    N  = dim(dat3_BHCP)[1],
-    y  = dat3_BHCP[ , WTkgL10],
-    x  = dat3_BHCP[ , TLmL10]
-    )
+## s1_BHCP <- list(
+##     N  = dim(dat3_BHCP)[1],
+##     y  = dat3_BHCP[ , WTkgL10],
+##     x  = dat3_BHCP[ , TLmL10]
+##     )
 
 ## lwSimpleOut_BHCP <- stan(file = "lwSimple.stan",
 ##                     data = s1_BHCP,
@@ -393,14 +396,14 @@ s1_BHCP <- list(
 
 ## build length-weight model
 ## with matrix input
-x_BHCP<- model.matrix( ~ TLmL10, data = dat3_BHCP)
+## x_BHCP<- model.matrix( ~ TLmL10, data = dat3_BHCP)
 
-s2_BHCP <- list(
-    N  = dim(dat3_BHCP)[1],
-    K  = ncol(x_BHCP),
-    y  = dat3_BHCP[ , WTkgL10],
-    x  = x_BHCP
-    )
+## s2_BHCP <- list(
+##     N  = dim(dat3_BHCP)[1],
+##     K  = ncol(x_BHCP),
+##     y  = dat3_BHCP[ , WTkgL10],
+##     x  = x_BHCP
+##     )
 
 ## lwSimMatOut_BHCP <- stan(file = "lwSimpleMatrix.stan",
 ##                     data = s2_BHCP,
@@ -410,24 +413,26 @@ s2_BHCP <- list(
 
 ## run model with correlated structure
 
-x_BHCP  = dat3_BHCP[ , model.matrix( ~ TLmL10)]
-x_BHCP[1, ]
+x_BHCP  = dat3_BHCP[ , model.matrix( ~ I(TLmL^3)]
+## x_BHCP[1, ]
 
 groupPredictKey_BHCP <-
     dat3_BHCP[ , .(PoolID =mean(PoolID)), by = Pool][ order(PoolID),]
-groupPredictKey_BHCP
-dat3_BHCP[ , .(PoolID, Pool)]
+## groupPredictKey_BHCP
+## dat3_BHCP[ , .(PoolID, Pool)]
 
 u_BHCP  = matrix(rep(1, length(dat3_BHCP[, unique(PoolID)])), ncol = 1)
-u_BHCP
+## u_BHCP
 
 ## output
 dat3_BHCP[ , summary(WTkgL10)]
 ## input
 dat3_BHCP[ , summary(TLmL10)]
 
-xProject_BHCP <- seq(-1, 0.25, length.out = 10)
-xProject_BHCP
+xProject_BHCP_raw <- seq(0.001, 1.5, length.out = 100)
+xProject_BHCP <- log10(xProject_BHCP_raw)
+
+## xProject_BHCP
 
 stanData_BHCP <- list(
     N  = dim(dat3_BHCP)[1], # Num obs
@@ -443,12 +448,12 @@ stanData_BHCP <- list(
 )
 
 ## ## Only run if needed
-## stanOut_BHCP <- stan(file = "lengthWeight.stan",
-##                      data = stanData_BHCP,
-##                      chains = 4, iter = 6000,
-##                      control = list(adapt_delta = 0.8))
-## save(stanOut_BHCP, file = "lengthWeight2_BHCP.RData")
-load("lengthWeight2_BHCP.RData")
+stanOut_BHCP <- stan(file = "lengthWeight3rd.stan",
+                     data = stanData_BHCP,
+                     chains = 4, iter = 6000,
+                     control = list(adapt_delta = 0.8))
+save(stanOut_BHCP, file = "lengthWeight3rd_BHCP.RData")
+load("lengthWeight3rd_BHCP.RData")
 ## stanOut_BHCP
 
 ##########################################################
@@ -461,29 +466,29 @@ load("lengthWeight2_BHCP.RData")
 
 stanOutsummary_BHCP <- summary(stanOut_BHCP,
                                probs = c(0.025, 0.1, 0.50, 0.9, 0.975))
-stanOutsummary_BHCP[[1]][grepl("beta", rownames(summary(stanOut_BHCP)[[1]])), ]
-stanOutsummary_BHCP[[1]][grepl("gamma", rownames(summary(stanOut_BHCP)[[1]])), ]
-stanOutsummary_BHCP[[1]][grepl("tau", rownames(summary(stanOut_BHCP)[[1]])), ]
-stanOutsummary_BHCP[[1]][grepl("Omega", rownames(summary(stanOut_BHCP)[[1]])), ]
+## stanOutsummary_BHCP[[1]][grepl("beta", rownames(summary(stanOut_BHCP)[[1]])), ]
+## stanOutsummary_BHCP[[1]][grepl("gamma", rownames(summary(stanOut_BHCP)[[1]])), ]
+## stanOutsummary_BHCP[[1]][grepl("tau", rownames(summary(stanOut_BHCP)[[1]])), ]
+## stanOutsummary_BHCP[[1]][grepl("Omega", rownames(summary(stanOut_BHCP)[[1]])), ]
 
 
 ################
 ## Plot intercepts
 intercepts_BHCP <- data.frame(stanOutsummary_BHCP[[1]][
-    grepl("(beta|gamma)(\\[\\d{1,2},1\\])",
+    grepl("(beta|gamma)(\\[\\d+,1\\])",
           rownames(summary(stanOut_BHCP)[[1]])), ])
 intercepts_BHCP$ID = gsub("\\,1]|\\[", "", rownames(intercepts_BHCP))
-intercepts_BHCP
+## intercepts_BHCP
 
 groupPredictKey_BHCP <-
     dat3_BHCP[ , .(PoolID =mean(PoolID)), by = Pool][ order(PoolID),]
-groupPredictKey_BHCP
-dat3_BHCP[ , .(PoolID, Pool)]
+## groupPredictKey_BHCP
+## dat3_BHCP[ , .(PoolID, Pool)]
 groupPredictKey_BHCP[ , PoolID := paste0("beta", PoolID)]
 groupPredictKey_BHCP <- rbind(groupPredictKey_BHCP,
                               data.table(Pool = "Hyper-parameter",
                                          PoolID = 'gamma1'))
-groupPredictKey_BHCP
+## groupPredictKey_BHCP
 
 interceptsDT_BHCP <- data.table(intercepts_BHCP)
 setkey(interceptsDT_BHCP, "ID")
@@ -509,28 +514,28 @@ ggIntercept_BHCP <-
     ylab(expression("Intercept estimate ("*log[10](weight)*")"))  +
     theme_minimal()
 
-ggIntercept_BHCP
+## ggIntercept_BHCP
 ggsave("intercept_BHCP.pdf", ggIntercept_BHCP, width = 4, height = 6)
 
 ################
 ## Plot slopes
 slopes_BHCP <-
-    data.frame(stanOutsummary_BHCP[[1]][grepl("(beta|gamma)(\\[\\d{1,2},2\\])",
+    data.frame(stanOutsummary_BHCP[[1]][grepl("(beta|gamma)(\\[\\d+,2\\])",
                                               rownames(summary(stanOut_BHCP)[[1]])),
                                         ])
 slopes_BHCP$ID = gsub("\\,2]|\\[", "", rownames(slopes_BHCP))
-slopes_BHCP
+## slopes_BHCP
 
 groupPredictKey_BHCP <-
     dat3_BHCP[ , .(PoolID =mean(PoolID)), by = Pool][ order(PoolID),]
-groupPredictKey_BHCP
-dat3_BHCP[ , .(PoolID, Pool)]
+## groupPredictKey_BHCP
+## dat3_BHCP[ , .(PoolID, Pool)]
 
 groupPredictKey_BHCP[ , PoolID := paste0("beta", PoolID)]
 groupPredictKey_BHCP <-
     rbind(groupPredictKey_BHCP,
           data.table(Pool = "Hyper-parameter", PoolID = 'gamma1'))
-groupPredictKey_BHCP
+## groupPredictKey_BHCP
 
 slopesDT_BHCP <- data.table(slopes_BHCP)
 setkey(slopesDT_BHCP, "ID")
@@ -543,7 +548,7 @@ setnames(slopesDT_BHCP, "X97.5.", "u95")
 setnames(slopesDT_BHCP, "X10.",  "l80")
 setnames(slopesDT_BHCP, "X90.",  "u80")
 
-slopesDT_BHCP
+## slopesDT_BHCP
 
 ggSlope_BHCP <-
     ggplot(slopesDT_BHCP, aes(x = Pool, y = mean)) +
@@ -556,7 +561,7 @@ ggSlope_BHCP <-
                          "estimate ("*frac(log[10](weight),log[10](length))*")"))) +
     theme_minimal()
 
-ggSlope_BHCP
+## ggSlope_BHCP
 ggsave("slope_BHCP.pdf", ggSlope_BHCP, width = 4, height = 6)
 
 ## plot projections 
@@ -581,8 +586,8 @@ setnames( siteProjectionsDT_BHCP, "X10.",  "l80")
 setnames( siteProjectionsDT_BHCP, "X90.",  "u80")
 
 ## Merge in length
-lengthDT_BHCP <- data.table(lengthID = 1:length(xProject_BHCP),
-                            length = xProject_BHCP)
+lengthDT_BHCP <- data.table(lengthID = 1:length(xProject_BHCP_raw),
+                            length = xProject_BHCP_raw)
 setkey(lengthDT_BHCP, "lengthID")
 setkey(siteProjectionsDT_BHCP, "lengthID")
 siteProjectionsDT_BHCP <- siteProjectionsDT_BHCP[lengthDT_BHCP]
@@ -603,7 +608,7 @@ setkey(poolMinMax_BHCP, "Pool")
 siteProjectionsDT_BHCP <-
     siteProjectionsDT_BHCP[ poolMinMax_BHCP]
 
-head(siteProjectionsDT_BHCP[ , length >= poolMin])
+## head(siteProjectionsDT_BHCP[ , length >= poolMin])
 
 
 GGlwData_BHCP <- ggplot() +
@@ -611,12 +616,12 @@ GGlwData_BHCP <- ggplot() +
     geom_line(data = siteProjectionsDT_BHCP, aes(x = length, y = mean),
               color = 'blue', size = 1.1) +
     facet_wrap( ~ Pool, nrow = 2) +
-    ## geom_ribbon(data = siteProjectionsDT,
-    ##             aes(x = length,  ymin = l95, ymax = u95), color = 'orange', alpha = 0.5) +
+    geom_ribbon(data = siteProjectionsDT_BHCP,
+                aes(x = length,  ymin = l95, ymax = u95), color = 'orange', alpha = 0.5) +
     ylab(expression(log[10]*"(weight kg)")) +
     xlab(expression(log[10]*"(length m)")) +
     theme_minimal()
-GGlwData_BHCP
+## GGlwData_BHCP
 ggsave("lengthWeightData_BHCP.pdf", GGlwData_BHCP, width = 8, height = 6)
 
 ## exract out hyper parameter
@@ -635,8 +640,8 @@ setnames( yHyperDT_BHCP, "X10.",  "l80")
 setnames( yHyperDT_BHCP, "X90.",  "u80")
 
 ## Merge in length
-lengthDT_BHCP <- data.table(lengthID = 1:length(xProject_BHCP),
-                            length = xProject_BHCP)
+lengthDT_BHCP <- data.table(lengthID = 1:length(xProject_BHCP_raw),
+                            length = xProject_BHCP_raw)
 setkey(lengthDT_BHCP, "lengthID")
 setkey(yHyperDT_BHCP, "lengthID")
 yHyperDT_BHCP <-
@@ -646,20 +651,18 @@ yHyperDT_BHCP <-
 ggHyper_BHCP <-
     ggplot() +
     geom_line(data = siteProjectionsDT_BHCP,
-              aes(x = length, y = mean, color = Pool), size = 1.1) +
+              aes(x = length, y = mean, group = Pool), size = 1, alpha = 0.5, color = 'blue') +
     ylab(expression(log[10]*"(weight kg)")) +
     xlab(expression(log[10]*"(length m)")) +
     theme_minimal() +
     scale_color_hue(l=40) + 
-    ## scale_color_manual( values = c("red", "blue", "seagreen",
-    ##                                "orange", "skyblue", "navyblue")) +
     geom_ribbon(data = yHyperDT_BHCP,
                 aes(x = length, ymin = l95, ymax = u95),
-                fill = 'grey', alpha = 0.5) +
+                fill = 'red', alpha = 0.75) +
     geom_line(data = yHyperDT_BHCP,
               aes(x = length, y = mean),
               color = 'black', size = 1)
 
-ggHyper_BHCP
+## ggHyper_BHCP
 ggsave("lengthWeightHyper_BHCP.pdf", ggHyper_BHCP, width = 6, height = 4) 
 

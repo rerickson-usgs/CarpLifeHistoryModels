@@ -1,5 +1,3 @@
-## TO DO: FINISH CREATING PLOTS OF PARAMETERS
-
 library(data.table) # used for data manipulation
 library(lubridate) # used to format date
 library(ggplot2) # used for plotting 
@@ -162,6 +160,8 @@ LinfPlotGG <- ggplot(data = LinfPlot, aes(x = Pool, y = median)) +
 print(LinfPlotGG)
 ggsave("LinfPlot.pdf", LinfPlotGG, width = 3, height = 4)
 
+LinfPlot
+
 ## Plot growth rates
 KPlot <- copy(stanOutOsummaryDT[ grepl("K", Parameter), ])
 poolNamesDT <- data.table(Pool = c(poolNames, "across sites"),
@@ -305,3 +305,7 @@ hyperPlot <-
                                    "orange", "skyblue", "navyblue")) 
 print(hyperPlot)
 ggsave("hyperPlot.pdf", hyperPlot, width = 6, height = 4)
+
+
+## Extract out raw parameter estimates for SEACarP sims
+

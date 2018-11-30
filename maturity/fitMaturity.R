@@ -7,9 +7,10 @@ library(rstan) # used to fit Bayesian model
 options(mc.cores = parallel::detectCores())
 
 ## Read in a format data
-dat <- fread("../Demographics_080318.csv")
+dat <- fread("../Demographics_082118.csv")
 dat[ , Sampdate :=ymd(Sampdate)] 
 dat[,  FL := as.numeric(FL)]
+dat[ !is.na(Maturity), ]
 dat2 <- dat[ Maturity != "NA",] 
 dat2[ , Maturity := factor(Maturity)]
 dat2[ , M2 := as.numeric(Maturity) - 1]
@@ -22,46 +23,14 @@ dat2[ , GonadWTkg := GonadWT/1000]
 dat2[ , SpeciesFull := factor(Species, levels = c("BHCP", "SVCP"), labels = c("Bighead", "Silver"))]
 
 
-## Explore data
-ggplot(data  = dat2[Species %in% c( "SVCP", "BHCP"), ][GonadScaled >0,],
-       aes(x = TLm, y = GonadScaled)) +
-    geom_point(alpha = 0.5) +
-    facet_grid( ~ Species) +
-    theme_minimal()  + 
-    ylab("Gonad weight (scaled, max = 0)") +
-    xlab("Total length") +
-    stat_smooth(method = 'glm',  method.args = list(family = "binomial")) 
-
-ggplot(data  = dat2[ Maturity =="Mature" & Sex == "F" & Month %in% 5:9 & Species %in% c( "SVCP", "BHCP"),],
-       aes(x = WTkg, y = GonadWTkg)) +
-    geom_point(alpha = 0.5) +
-    facet_grid( Pool ~ SpeciesFull) +
-    theme_minimal()  + 
-    ylab("Gonad weight (kg)") +
-    xlab("Total weight (kg)") +
-    geom_smooth(method = 'lm')
-
-ggplot(data  = dat2[Species %in% c( "SVCP", "BHCP"), ],
-       aes(x = TL, y = M2)) +
-    geom_point(alpha = 0.5) +
-    stat_smooth(method = 'glm',  method.args = list(family = "binomial")) +
-    facet_grid( . ~ Species) +
-    theme_minimal() +
-    ylab("Maturity") +
-    xlab("Total length (m)")
-
-
-
 ## Examine by pool to see if we need to pool or can estimate across pools
-dat2[ , .N, by = Pool]
+dat2[ , .N, by = .( Maturity, Pool)][ order(Pool)]
 
 dat2[ Species == "SVCP", .N, by = Pool][ order(N, decreasing = TRUE), ]
 
-dat3SVCP <- dat2[ Pool %in% c("LaGrange", "Alton", "Peoria",
-                              "Marseilles", "Pool 26", "Pool 27") ,][ Species == "SVCP", ]
+dat3SVCP <- dat2[ Species == "SVCP", ]
 
-dat3BHCP <- dat2[ Pool %in% c("LaGrange", "Alton", "Peoria",
-                              "Marseilles", "Pool 26", "Pool 27") ,][ Species == "BHCP", ]
+dat3BHCP <- dat2[ Species == "BHCP", ]
 
 ## Plot by pools
 ggplot(dat2[ Species %in% c( "SVCP", "BHCP"), ], aes(x = TLm, y = M2)) +
@@ -91,10 +60,10 @@ stanDataSVCP <- list(
 )
 
 names(stanDataSVCP)
-
 ## stanOutSVCP <- stan(file = "maturity.stan", data = stanDataSVCP, chains = 4, iter = 6000,
 ##                     control = list(adapt_delta = 0.8))
 ## save(file = "logisticRegressionSVCP.Rda", x = stanOutSVCP)
+
 load("logisticRegressionSVCP.Rda")
 
 print(stanOutSVCP, pars = c("alpha", "beta", "lp__"))
@@ -131,7 +100,6 @@ ggsave("parEstSVCP.pdf", parEstSVCP, width = 4, height = 2)
 
 
 ### Predicted distribution
-
 predOutSVCP <- data.frame(summary(stanOutSVCP, pars = c("yProject"), prob = c(0.025, 0.1, 0.5, 0.9, 0.975))$summary)
 predOutSVCP$parameter <- rownames(predOutSVCP)
 predOutSVCPDT <- data.table(predOutSVCP)
@@ -143,7 +111,6 @@ predOutSVCPDT[ , index := as.numeric(gsub("yProject\\[(\\d{1,3})\\]", "\\1", par
 setkey(predOutSVCPDT, "index")
 dataInSVCPDT <- data.table(length = dataInSVCP, index = 1:length(dataInSVCP))
 setkey(dataInSVCPDT, "index")
-
 predOutSVCPDT <- dataInSVCPDT[predOutSVCPDT]
 
 predEstSVCP <-

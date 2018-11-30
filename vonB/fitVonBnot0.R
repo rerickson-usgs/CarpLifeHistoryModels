@@ -4,6 +4,8 @@ library(ggplot2) # used for plotting
 library(rstan) # used to fit Bayesian model
 options(mc.cores = parallel::detectCores())
 
+rerunStan = TRUE
+
 ## Read in a format data
 dat <- fread("../Demographics_080318.csv")
 
@@ -11,61 +13,58 @@ dat[ , Sampdate :=ymd(Sampdate)]
 dat[,  FL := as.numeric(FL)]
 
 dat[ , unique(Species)]
+dat[ , unique(Pool)]
+dat[ , unique(Species)]
+dat[ , unique(Pool)]
+dat[ Pool == "OR(pool 27)", Pool := "Pool 27"]
+dat[ Pool == "Dresden", Pool := "Dresden Island"]
 
-## Look at relationship between total length and fork length
-summary(dat[ Species == "SVCP", lm(TL ~ FL)])
-summary(dat[ Species == "BHCP", lm(TL ~ FL)])
-
-summary(dat[ Species %in% c( "SVCP", "BHCP"), lm(TL ~ FL * Species)])
-
-FLvTL <- ggplot(data  = dat[Species %in% c( "SVCP", "BHCP"), ],
-                aes(x = TL, y = FL)) +
-    geom_point(alpha = 0.5) +
-    stat_smooth(method = 'lm') +
-    facet_grid( ~ Species) +
-    theme_minimal() +
-    ylab("Fork length") +
-    xlab("Total length")
+## FLvTL <- ggplot(data  = dat[Species %in% c( "SVCP", "BHCP"), ],
+##                 aes(x = TL, y = FL)) +
+##     geom_point(alpha = 0.5) +
+##     stat_smooth(method = 'lm') +
+##     facet_grid( ~ Species) +
+##     theme_minimal() +
+##     ylab("Fork length") +
+##     xlab("Total length")
 ## FLvTL
 
 dat2 <- dat[ !is.na(TL) & !is.na(Age), ]
-dat2[ , .N, by = Pool]
+## dat2[ , .N, by = Pool]
 dat2[ , Age2 := floor(Age)]
 
 dat2[ , Age3 := Age2 + (month(Sampdate)-5)/12]
 dat2[ , Pool :=factor(Pool)]
-dat2[ , levels(Pool)]
+## dat2[ , levels(Pool)]                   
 dat2[ , PoolID := as.numeric(Pool)]
 
-dat2[ , .N, by = Pool]
+## dat[ , .N, by = Pool][ order(N, decreasing = TRUE)]
+## dat2[ , .N, by = Pool][ order(N, decreasing = TRUE)]
 
 ## Plot only SVCP across all pools for summary slides
-AvTL <- ggplot(dat2[ Species %in% c( "SVCP"), ], aes(x = Age2, y = TL/1000)) +
-    geom_point(alpha = 0.25) +
-    facet_grid( Species~Pool) +
-    xlab("Age (years)") +
-    ylab("Length (m)") + theme_minimal()
+## AvTL <- ggplot(dat2[ Species %in% c( "SVCP"), ], aes(x = Age2, y = TL/1000)) +
+##     geom_point(alpha = 0.25) +
+##     facet_grid( Species~Pool) +
+##     xlab("Age (years)") +
+##     ylab("Length (m)") + theme_minimal()
 
 ## Plot by pools
-AvTLbyPool <- ggplot(dat2[ Species %in% c( "SVCP", "BHCP"), ],
-                     aes(x = Age2, y = TL/1000)) +
-    geom_point(alpha = 0.25) +
-    facet_grid( Species~Pool) +
-    xlab("Age (years)") +
-    ylab("Length (m)") + theme_minimal()
+## AvTLbyPool <- ggplot(dat2[ Species %in% c( "SVCP", "BHCP"), ],
+##                      aes(x = Age2, y = TL/1000)) +
+##     geom_point(alpha = 0.25) +
+##     facet_grid( Species~Pool) +
+##     xlab("Age (years)") +
+##     ylab("Length (m)") + theme_minimal()
 
 ## Get data from Stan
 
-dat2[ Species == "SVCP", .N, by = Pool][ order(N, decreasing = TRUE), ]
+## dat2[ Species == "SVCP", .N, by = Pool][ order(N, decreasing = TRUE), ]
 
-dat2[ , unique(Pool)]
 ## Silver carp SVCP analysis
 dat3_SVCP <- dat2[ Species == "SVCP", ] 
-dat3_SVCP[ , unique(Pool)]
 dat3_SVCP[ , Pool := factor(Pool)]
-dat3_SVCP[ , levels(Pool)]
 dat3_SVCP[ , PoolID := as.numeric(Pool)]
-dat3_SVCP[ , .N, by = .(Pool, Species)]
+## dat3_SVCP[ , .N, by = .(Pool, Species)]
 
 ## Convert to M to stabilisze results
 dat3_SVCP[ , TLm := TL/1000]
@@ -100,16 +99,17 @@ stanData_SVCP <- list(
     ageProject = ageProjection
     )
 
-names(stanData_SVCP)
-
 ## Model takes ~0.25 hrs to run.
 ## the stan function is commented out and the outputs loaded from a saved file
 ## unless it needs to be re-run. 
-## stanOutO_SVCP <- stan(file = "vonBoNot0.stan",
-##                  data = stanData_SVCP, chains = 4, iter = 6000,
-##                  control = list(adapt_delta = 0.8))
-## save(stanOutO_SVCP, file = "vonBfitNot0_SVCP.RData")
-load("vonBfitNot0_SVCP.RData")               
+if(rerunStan){
+    stanOutO_SVCP <- stan(file = "vonBoNot0.stan",
+                          data = stanData_SVCP, chains = 4, iter = 6000,
+                          control = list(adapt_delta = 0.8))
+    save(stanOutO_SVCP, file = "vonBfitNot0_SVCP.RData")
+} else {
+    load("vonBfitNot0_SVCP.RData")
+}
 
 ## stanOutO_SVCP
 stanOutOsummary_SVCP <-
@@ -292,23 +292,8 @@ ggsave("hyperPlotNot0_SVCP.jpg", hyperPlot_SVCP, width = 6, height = 4)
 dat3_BHCP <- dat2[ Species == "BHCP", ]
 dat3_BHCP[ , Pool := factor(Pool)]
 dat3_BHCP[ , PoolID := as.numeric(Pool)]
-dat3_BHCP[ , .N, by = .(Pool, Species)]
-
 ## Convert to M to stabilisze results
 dat3_BHCP[ , TLm := TL/1000]
-
-## Explore prior for expoendital
-x <- seq(0.01, 5, by = 0.01)
-expPlot <- data.table(x = x,
-                      y1   = dexp(x, 1),
-                      y0.5 = dexp(x, 0.5),
-                      y2   = dexp(x, 2),
-                      y3   = dexp(x, 3),
-                      y4   = dexp(x, 4))
-expPlot <- melt(expPlot, id.vars = 'x', variable.name= 'rate', value.name = 'y')
-expPlot[ , rate := as.numeric(gsub( "y", "", rate))]
-
-ggexp <- ggplot(expPlot, aes(x = x, y = y, color = rate, group = rate)) + geom_line()
 
 ageProjection = seq(0, 20, by = 1)
 
@@ -330,18 +315,17 @@ stanData_BHCP <- list(
 dat3_BHCP[ , unique(PoolID)]
 dat3_BHCP[ , unique(Pool)]
 
-dat[ , .N, by = .( Pool, Species)]
-dat2[ , .N, by = .( Pool, Species)]
-names(stanData_BHCP)
-
 ## Model takes ~0.25 hrs to run.
 ## the stan function is commented out and the outputs loaded from a saved file
 ## unless it needs to be re-run. 
-## stanOutO_BHCP <- stan(file = "vonBoNot0.stan",
-##                  data = stanData_BHCP, chains = 4, iter = 6000,
-##                  control = list(adapt_delta = 0.8))
-## save(stanOutO_BHCP, file = "vonBfitNot0_BHCP.RData")
-load("vonBfitNot0_BHCP.RData")               
+if(rerunStan){
+    stanOutO_BHCP <- stan(file = "vonBoNot0.stan",
+                          data = stanData_BHCP, chains = 4, iter = 6000,
+                          control = list(adapt_delta = 0.8))
+    save(stanOutO_BHCP, file = "vonBfitNot0_BHCP.RData")
+} else {
+    load("vonBfitNot0_BHCP.RData")                    
+}
 
 
 stanOutOsummary_BHCP <- 

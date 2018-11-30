@@ -36,10 +36,11 @@ generated quantities{
   
     
   for(p in 1:nProject){
-    yHyper[p] =  gamma[1,1] +  gamma[1,2]  * xProject[p];
+    yHyper[p] =  normal_rng( gamma[1,1] +  gamma[1,2]  * xProject[p], sigma);
 
     for(group in 1:J){
-      yProject[ group, p] = beta[ group, 1] + beta[ group, 2] * xProject[p];
+      yProject[ group, p] =
+	normal_rng(beta[ group, 1] + beta[ group, 2] * xProject[p], sigma);
     }    
   }
 }

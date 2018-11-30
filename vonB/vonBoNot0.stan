@@ -62,7 +62,7 @@ generated quantities{
     M[site] =  (4.118 * (K[site] ^ (0.73))) * (Linf[site] * 100) ^(-0.33);
     // create projections for each site
     for( p in 1:nProject){
-      siteProjections[ site, p] = Linf[site] * (1.0 - exp(-1.0 * K[site] * (ageProject[p] ))); // - t0[site]
+      siteProjections[ site, p] = normal_rng(Linf[site] * (1.0 - exp(-1.0 * K[site] * (ageProject[p] ))), sigmaLength);
     }
   }
 
@@ -70,6 +70,7 @@ generated quantities{
   M_bar =  (4.118 * (K_bar ^ (0.73))) * (Linf_bar * 100) ^(-0.33);
   
   // simulate using equations
-  hyperProjection = Linf_bar * (1.0 - exp(-1.0 * K_bar * (ageProject ))); // - t0_bar
-
+  for( p in 1:nProject){
+    hyperProjection[p] = normal_rng(Linf_bar * (1.0 - exp(-1.0 * K_bar * (ageProject[p] ))), sigmaLength);
+  }
 }
