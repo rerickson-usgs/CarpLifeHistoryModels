@@ -6,9 +6,8 @@ library(data.table)
 library(scales)
 
 ## Von B
-dat <- fread("../Demographics_082118.csv")
+dat <- fread("../DemographicsData.csv")
 dat[ , Sampdate :=ymd(Sampdate)] 
-dat[,  FL := as.numeric(FL)]
 dat[ , Pool := factor(Pool)]
 
 dat2 <- dat[ !is.na(TL) & !is.na(Age), ]
@@ -32,7 +31,7 @@ vonBtable
 
 ## maturity
 ## Load and format raw data
-dat <- fread("../Demographics_080318.csv")
+dat <- fread("../demographicData.csv")
 dat[ , Sampdate :=ymd(Sampdate)] 
 dat[,  FL := as.numeric(FL)]
 dat2 <- dat[ Maturity != "NA",] 

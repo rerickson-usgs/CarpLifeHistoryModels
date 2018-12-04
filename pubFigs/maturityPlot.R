@@ -4,18 +4,15 @@ library(rstan)
 library(data.table)
 
 ## Load and format raw data
-dat <- fread("../Demographics_080318.csv")
+dat <- fread("../DemographicsData.csv")
 dat[ , Sampdate :=ymd(Sampdate)] 
-dat[,  FL := as.numeric(FL)]
+
 dat2 <- dat[ Maturity != "NA",] 
 dat2[ , Maturity := factor(Maturity)]
 dat2[ , M2 := as.numeric(Maturity) - 1]
 dat2[ , TLm := TL / 1000]
 dat2[ , WTkg := WT/1000]
-dat2[ , GonadWT := as.numeric(GonadWT)]
-dat2[ , GonadScaled := GonadWT/max(GonadWT, na.rm = TRUE), by = Species]
 dat2[ , Month := month(Sampdate)]
-dat2[ , GonadWTkg := GonadWT/1000]
 dat2[ , SpeciesFull := factor(Species, levels = c("BHCP", "SVCP"), labels = c("Bighead carp", "Silver carp"))]
 
 ## Exctract and cleanup data
@@ -141,7 +138,6 @@ predOutBHCPDT[ , SpeciesFull := "Bighead carp"]
 
 predOut <- rbind(predOutSVCPDT, predOutBHCPDT)
 
-dat2
 str(predOut)
 predEst <-
     ggplot(predOut, aes(x = length, y = mean)) +
@@ -152,7 +148,7 @@ predEst <-
     xlab("Length (m)") +
     theme_minimal()  +
     facet_grid( . ~ SpeciesFull) +
-    geom_jitter(data = dat2, aes(x = TLm, y = M2),
+    geom_jitter(data = dat2[ Species %in% c("BHCP", "SVCP"), ], aes(x = TLm, y = M2),
                 width = 0, height = 0.005)
 
 predEst

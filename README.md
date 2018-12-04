@@ -5,13 +5,16 @@ Richard A. Erickson, David Glover, and Jahn Kallis
 
 
 This code fits Asian carp observation data to different statistical models that describe the demography of the species.
-We also include some simple Stan models we in the process of building our final model.
+We also include some simple Stan models we in the process of building our final model. 
 We include these to help other because a paucity of ecological models exist for Stan.
+The growth curve and length-weight regression models all include `*_clean.R` file. 
+This file contains the code used for the manuscript. 
+The version of the file without this ending includes extra material that may be helpful for learning how to use the model, but is not necessary for recreating our results. 
 
 The code uses [Stan](mc-stan.org) called through [R](https://www.r-project.org/) to fit the models.
 These models can readily be adapted to other fish and animal species.
 Users should understand Stan and R before trying to use this code.
-Additionally, we used the `data.table` package to format our data.
+Additionally, we used the `data.table` package and `tidvyverse` packages to format our data.
 
 ## Code files
 
@@ -22,6 +25,7 @@ This repository contains the following files and folder:
 - `README.md`: This file.
 - `LICENSE`: The standard USGS software license.
 -  `lengthWeight`: This folder contains a length-weight model.
+   -  `fitLW_clean.R` is the R code to fit the model used in the manuscript.
    -  `fitLW.R` is R code to fit 3 Stan models.
    -  `lwSimple.stan` is a simple linear regression with a single intercept and single slope parameter.
    -  `lwSimpleMatrix.stan` is the above model, but uses matrix notation for inputs and can include multiple slopes and intercepts. 
@@ -36,7 +40,12 @@ This repository contains the following files and folder:
   - `vonBoNot0.stan` is a Von B model without a size at time zero parameters. This model has been optimized and includes a correlated structure for coefficients.
   - `fitVonB.R` is the R code that fits the model we used in our manuscript: `vonBo.stan`
   -  `vonBo.stan` is an optimized, hierarchical model that includes correlated variables.
-
+- `pubFigs` include code used to create the publication figures. 
+  - `dataTall.R` summarizes the data (e.g., number of observations per location) and calculates the observed percentage of each sex
+  - `lengthWeightPlot.R` creates the publication length-weight plots.
+  - `map.R` creates the map figure used in the publication.
+  - `main_river_Stems` contains a shapefile of the rivers used in the map.
+  - `maturityPlot.R` contains the code used to crate the publication plot of maturity. 
 
 ## Contact for code 
 

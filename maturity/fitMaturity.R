@@ -1,4 +1,4 @@
-## Load required libraries
+## Load required librarie
 library(data.table) # used for data manipulation
 library(lubridate) # used to format date
 library(ggplot2) # used for plotting 
@@ -7,19 +7,15 @@ library(rstan) # used to fit Bayesian model
 options(mc.cores = parallel::detectCores())
 
 ## Read in a format data
-dat <- fread("../Demographics_082118.csv")
+dat <- fread("../DemographicsData.csv")
 dat[ , Sampdate :=ymd(Sampdate)] 
-dat[,  FL := as.numeric(FL)]
-dat[ !is.na(Maturity), ]
+
 dat2 <- dat[ Maturity != "NA",] 
 dat2[ , Maturity := factor(Maturity)]
 dat2[ , M2 := as.numeric(Maturity) - 1]
 dat2[ , TLm := TL / 1000]
 dat2[ , WTkg := WT/1000]
-dat2[ , GonadWT := as.numeric(GonadWT)]
-dat2[ , GonadScaled := GonadWT/max(GonadWT, na.rm = TRUE), by = Species]
 dat2[ , Month := month(Sampdate)]
-dat2[ , GonadWTkg := GonadWT/1000]
 dat2[ , SpeciesFull := factor(Species, levels = c("BHCP", "SVCP"), labels = c("Bighead", "Silver"))]
 
 

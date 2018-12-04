@@ -6,9 +6,8 @@ library(data.table)
 library(scales)
 
 ## Read in a format data
-dat <- fread("../Demographics_082118.csv")
+dat <- fread("../DemographicsData.csv")
 dat[ , Sampdate :=ymd(Sampdate)] 
-dat[,  FL := as.numeric(FL)]
 dat[ , unique(Species)]
 dat[ Pool == "OR(pool 27)", Pool := "Pool 27"]
 dat[ Pool == "Dresden", Pool := "Dresden Island"]
@@ -37,10 +36,6 @@ groupPredictKey_SVCP
 
 xProject_SVCP <- seq(dat2[ , range(TLmL10)][1], dat2[ , range(TLmL10)][2], length.out = 100)
 
-
-## xProject_SVCP <- seq(dat3_SVCP[ , range(TLmL10)][1],
-##                      dat3_SVCP[ , range(TLmL10)][2],
-##                      length.out = 10)
 xProject_SVCP
 
 ## Load in fittied data
@@ -410,8 +405,6 @@ ggHyper_SVCP <-
     ylab(expression("Weight (kg)")) +
     xlab(expression("Length (m)")) +
     theme_minimal() +
-    ## scale_color_manual( values = c("red", "blue", "seagreen",
-    ##                                "orange", "skyblue", "navyblue")) +
     geom_ribbon(data = yHyperDT_SVCP,
                 aes(x = 10^length, ymin = 10^l95, ymax = 10^u95),
                 fill = 'red', alpha = 0.5) +

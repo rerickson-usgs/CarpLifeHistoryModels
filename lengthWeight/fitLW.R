@@ -6,10 +6,10 @@ library(rstan) # used to fit Bayesian model
 options(mc.cores = parallel::detectCores())
 
 ## Read in a format data
-dat <- fread("../Demographics_080318.csv")
+dat <- fread("../DemographicsData.csv")
 
 dat[ , Sampdate :=ymd(Sampdate)] 
-dat[,  FL := as.numeric(FL)]
+
 
 dat[ , unique(Species)]
 dat[ , unique(Pool)]
@@ -106,7 +106,6 @@ s2_SVCP <- list(
 
 ## run model with correlated structure
 
-x_SVCP  = dat3_SVCP[ , model.matrix( ~ I(TLm^3)]
 ## x_SVCP[1, ]
 
 groupPredictKey_SVCP <-

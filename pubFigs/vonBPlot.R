@@ -8,9 +8,8 @@ library(ggrepel)
 
 
 ## Read in demographic data
-dat <- fread("../Demographics_082118.csv")
+dat <- fread("../DemographicsData.csv")
 dat[ , Sampdate :=ymd(Sampdate)] 
-dat[,  FL := as.numeric(FL)]
 dat[ , Pool := factor(Pool)]
 
 dat2 <- dat[ !is.na(TL) & !is.na(Age), ]

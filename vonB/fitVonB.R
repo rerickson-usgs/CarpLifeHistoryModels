@@ -5,29 +5,11 @@ library(rstan) # used to fit Bayesian model
 options(mc.cores = parallel::detectCores())
 
 ## Read in a format data
-dat <- fread("../Demographics_01.csv")
+dat <- fread("../DemographicsData.csv")
 
 dat[ , Sampdate :=ymd(Sampdate)] 
-dat[,  FL := as.numeric(FL)]
 
 dat[ , unique(Species)]
-
-## Look at relationship between total length and fork length
-summary(dat[ Species == "SVCP", lm(TL ~ FL)])
-summary(dat[ Species == "BHCP", lm(TL ~ FL)])
-
-summary(dat[ Species %in% c( "SVCP", "BHCP"), lm(TL ~ FL * Species)])
-
-FLvTL <- ggplot(data  = dat[Species %in% c( "SVCP", "BHCP"), ],
-                aes(x = TL, y = FL)) +
-    geom_point(alpha = 0.5) +
-    stat_smooth(method = 'lm') +
-    facet_grid( ~ Species) +
-    theme_minimal() +
-    ylab("Fork length") +
-    xlab("Total length")
-FLvTL
-## Consider modeling total length from fork length here
 
 dat2 <- dat[ !is.na(TL) & !is.na(Age), ]
 dat2[ , .N, by = Pool]
@@ -35,7 +17,6 @@ dat2[ , .N, by = Pool]
 
 dat2[ , Age2 := floor(Age)]
 
-## Dave, why the -5? 
 dat2[ , Age3 := Age2 + (month(Sampdate)-5)/12]
 dat2[ , Pool :=factor(Pool)]
 dat2[ , levels(Pool)]
