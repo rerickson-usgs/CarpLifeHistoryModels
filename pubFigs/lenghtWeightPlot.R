@@ -188,7 +188,7 @@ setkey(coefAll, "Pool")
 setkey(RiverKey, "Pool")
 coefAll <- RiverKey[coefAll]
 
-coefAll[ , Pool := factor(Pool, levels = RiverKey[ , Pool])]
+coefAll[ , Pool := factor(Pool, levels = rev(RiverKey[ , Pool]))]
 coefAll[ ! complete.cases(coefAll),]
 
 ## Plot all

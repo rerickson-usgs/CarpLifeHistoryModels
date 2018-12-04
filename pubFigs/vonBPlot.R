@@ -349,7 +349,11 @@ levels(coefAll$ParameterPlot)
 coefAllOhio <- coefAll[ grepl("Ohio", River), ]
 coefAllNotOhio <- coefAll[ !grepl("Ohio", River), ]
 
-coefAllGGOhio <- ggplot(data = coefAllOhio, aes(x = Pool, y = median,
+coefAllOhio[ , Pool2 := factor(Pool, levels = rev(levels(Pool)))]
+coefAllNotOhio[ , Pool2 := factor(Pool, levels = rev(levels(Pool)))]
+
+
+coefAllGGOhio <- ggplot(data = coefAllOhio, aes(x = Pool2, y = median,
                                         color = River)) +
     geom_point(size = 1.5) +
     geom_linerange(aes(ymin = L80, ymax = U80), size = 1.3)  +
@@ -365,9 +369,8 @@ print(coefAllGGOhio)
 
 ggsave("VB_coefOhio.pdf", coefAllGGOhio, width = 6, height = 4)
 
-
 ##
-coefAllGGNotOhio <- ggplot(data = coefAllNotOhio, aes(x = Pool, y = median,
+coefAllGGNotOhio <- ggplot(data = coefAllNotOhio, aes(x = Pool2, y = median,
                                         color = River)) +
     geom_point(size = 1.5) +
     geom_linerange(aes(ymin = L80, ymax = U80), size = 1.3)  +
@@ -394,6 +397,14 @@ datGG <- RiverKey[ River != "Hyper-parameter",][datGG]
 setkey(siteProjections, "Pool")
 siteProjections <- RiverKey[ River != "Hyper-parameter",][siteProjections]
 
+
+RiverKey2 <- RiverKey[ Pool  %in% datGG[ ,unique(Pool)], ]
+
+
+
+datGG[ , Pool2 := factor(Pool, levels = RiverKey2[ , Pool])]
+siteProjections[ , Pool2 := factor(Pool, levels = RiverKey2[ , Pool])]
+
 dataVBplot <- ggplot() + 
     geom_point(data = datGG, aes(x = Age3, y = TLm), alpha = 0.1) +
     xlab("Age (years)") +
@@ -406,14 +417,14 @@ dataVBplot <- ggplot() +
     geom_ribbon(data = siteProjections,
                 aes(x = age -1, ymin = L95, ymax = U95, fill = River),
                 alpha = 0.25)  +
-    facet_grid( Species ~ River + Pool) +
+    facet_grid( Species ~ River + Pool2) +
     scale_x_continuous(breaks = seq(0, max(ageProjection), by = 5)) +
     scale_color_manual(values = c( "blue", "seagreen", "orange")) +
     scale_fill_manual(values = c( "blue", "seagreen", "orange")) +
     theme(legend.position="none")
 
 print(dataVBplot)
-
+datGG[ , .N, by = .(Pool, Species)]
 ggsave("dataVBplotNot0.pdf", dataVBplot, width = 14, height = 8)
 
 hyperProjection_SVCP
@@ -539,8 +550,9 @@ setkey(coefAll, "Pool")
 coefRiver <- RiverKey[coefAll]
 colnames(coefRiver)
 
+coefRiver2 <- coefRiver[ !is.na(River), ]
 
-vonBLat <- ggplot(coefRiver, aes(x = mean, y = y)) +
+vonBLat <- ggplot(coefRiver2, aes(x = mean, y = y)) +
     geom_point(aes(x = mean, y = y, shape = River)) +
     facet_grid( Species ~ ParameterPlot,
                labeller = labeller(ParameterPlot = label_parsed),

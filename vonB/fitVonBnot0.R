@@ -7,7 +7,7 @@ options(mc.cores = parallel::detectCores())
 rerunStan = TRUE
 
 ## Read in a format data
-dat <- fread("../Demographics_080318.csv")
+dat <- fread("../Demographics_082118.csv")
 
 dat[ , Sampdate :=ymd(Sampdate)] 
 dat[,  FL := as.numeric(FL)]
@@ -83,6 +83,8 @@ expPlot[ , rate := as.numeric(gsub( "y", "", rate))]
 ggexp <- ggplot(expPlot, aes(x = x, y = y, color = rate, group = rate)) + geom_line()
 
 ageProjection = seq(0, 20, by = 1)
+
+dat3_SVCP[ , .N, by = PoolID]
 
 stanData_SVCP <- list(
     nFish  = dim(dat3_SVCP)[1],
@@ -295,6 +297,8 @@ dat3_BHCP[ , PoolID := as.numeric(Pool)]
 ## Convert to M to stabilisze results
 dat3_BHCP[ , TLm := TL/1000]
 
+dat3_BHCP[ , .N, by = PoolID]
+
 ageProjection = seq(0, 20, by = 1)
 
 stanData_BHCP <- list(
@@ -327,7 +331,6 @@ if(rerunStan){
     load("vonBfitNot0_BHCP.RData")                    
 }
 
-
 stanOutOsummary_BHCP <- 
     summary(stanOutO_BHCP, probs = c(0.025, 0.1, 0.50, 0.9, 0.975))
 
@@ -339,7 +342,6 @@ stanOutOsummary_BHCP[[1]][grepl("Linf", rownames(summary(stanOutO_BHCP)[[1]])),]
 
 stanOutOsummaryDT_BHCP <- data.table(stanOutOsummary_BHCP[[1]])
 stanOutOsummaryDT_BHCP[ , Parameter := rownames(stanOutOsummary_BHCP[[1]])]
-
 
 plot(stanOutO_BHCP, pars =c("Linf_bar", "K_bar", "Linf"))
 
