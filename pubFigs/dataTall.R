@@ -31,7 +31,7 @@ vonBtable
 
 ## maturity
 ## Load and format raw data
-dat <- fread("../demographicData.csv")
+dat <- fread("../DemographicsData.csv")
 dat[ , Sampdate :=ymd(Sampdate)] 
 dat[,  FL := as.numeric(FL)]
 dat2 <- dat[ Maturity != "NA",] 
@@ -54,7 +54,7 @@ Mattable
 
 ## length-weight 
 ## Read in a format data
-dat <- fread("../Demographics_082118.csv")
+dat <- fread("../DemographicsData.csv")
 dat[ , Sampdate :=ymd(Sampdate)] 
 dat[,  FL := as.numeric(FL)]
 dat[ , unique(Species)]
