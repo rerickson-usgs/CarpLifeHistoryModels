@@ -22,10 +22,9 @@ dat[ , WTkgL10 := log10(WTkg)]
 
 ## Plot by pools
 dat2 <- dat[ !is.na(TL) & !is.na(WT), ]
-dat2[ , PoolID := as.numeric(Pool)]
 
 ## Extract out silver carp SVCP
-dat3_SVCP<- dat2[ Species == "SVCP", ]
+dat3_SVCP <- dat2[ Species == "SVCP", ]
 dat3_SVCP[ , Pool := factor(Pool)]
 dat3_SVCP[ , PoolID := as.numeric(Pool)]
 
@@ -41,8 +40,6 @@ groupPredictKey_SVCP <-
 
 print( groupPredictKey_SVCP)
 fwrite(x = groupPredictKey_SVCP, file = "./SVCP_lw_key.csv")
-
-
 
 u_SVCP  = matrix(rep(1, length(dat3_SVCP[, unique(PoolID)])), ncol = 1)
 
@@ -67,19 +64,12 @@ stanOut_SVCP <- stan(file = "lengthWeight.stan",
                      data = stanData_SVCP,
                      chains = 4, iter = 6000,
                      control = list(adapt_delta = 0.8))
-save(stanOut_SVCP, file = "lengthWeight3rd_SVCP.RData")
-load("lengthWeight3rd_SVCP.RData")
-stanOut_SVCP
-gc()
-##########################################################
-##########################################################
-stanOutsummary_SVCP <- summary(stanOut_SVCP,
-                               probs = c(0.025, 0.1, 0.50, 0.9, 0.975))
-## stanOutsummary_SVCP[[1]][grepl("beta", rownames(summary(stanOut_SVCP)[[1]])), ]
-## stanOutsummary_SVCP[[1]][grepl("gamma", rownames(summary(stanOut_SVCP)[[1]])), ]
-## stanOutsummary_SVCP[[1]][grepl("tau", rownames(summary(stanOut_SVCP)[[1]])), ]
-## stanOutsummary_SVCP[[1]][grepl("Omega", rownames(summary(stanOut_SVCP)[[1]])), ]
 
+save(stanOut_SVCP, file = "lengthWeight3rd_SVCP.RData")
+gc()
+
+##########################################################
+##########################################################
 
 
 ## bighead carp model
@@ -127,15 +117,3 @@ stanOut_BHCP <- stan(file = "lengthWeight.stan",
                      chains = 4, iter = 6000,
                      control = list(adapt_delta = 0.8))
 save(stanOut_BHCP, file = "lengthWeight3rd_BHCP.RData")
-## load("lengthWeight3rd_BHCP.RData")
-## stanOut_BHCP
-
-##########################################################
-##########################################################
-stanOutsummary_BHCP <- summary(stanOut_BHCP,
-                               probs = c(0.025, 0.1, 0.50, 0.9, 0.975))
-## stanOutsummary_BHCP[[1]][grepl("beta", rownames(summary(stanOut_BHCP)[[1]])), ]
-## stanOutsummary_BHCP[[1]][grepl("gamma", rownames(summary(stanOut_BHCP)[[1]])), ]
-## stanOutsummary_BHCP[[1]][grepl("tau", rownames(summary(stanOut_BHCP)[[1]])), ]
-## stanOutsummary_BHCP[[1]][grepl("Omega", rownames(summary(stanOut_BHCP)[[1]])), ]
-

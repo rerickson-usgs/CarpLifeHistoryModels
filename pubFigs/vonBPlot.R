@@ -6,8 +6,7 @@ library(tidyverse)
 
 
 ## Read in demographic data
-dat <- read_csv("../DemographicsData.csv")
-dat <- dat %>%
+dat <- read_csv("../DemographicsData.csv")  %>%
     select(Sampdate, Year, Pool, Species, TL, Age) %>%
     mutate(Sampdate =ymd(Sampdate),
            Pool := factor(Pool),
@@ -15,7 +14,6 @@ dat <- dat %>%
            TLm = TL/1000,
            Age3 = Age + (month(Sampdate)-5)/1)
 
-    
 dat2 <- dat %>%
     filter(!is.na(TL) & !is.na(Age))
 
@@ -33,7 +31,7 @@ dat3_SVCP <- dat2 %>%
 load("../vonB/vonBfitNot0_SVCP.RData")
 
 ## Create svcp pool lookup table
-PoolKeyTable_SVCP <- read_csv("../vonB/SVCP_vonBkey.csv")x
+PoolKeyTable_SVCP <- read_csv("../vonB/SVCP_vonBkey.csv")
 PoolKeyTable_SVCP <- rbind(PoolKeyTable_SVCP,
                            tibble(Pool = c("Linf_bar", "K_bar", "M_bar"),
                                   PoolID = c("Linf_bar", "K_bar", "M_bar")))
@@ -41,7 +39,7 @@ PoolKeyTable_SVCP <-
     PoolKeyTable_SVCP %>%
     mutate(Pool := factor(Pool))
     
-RiverKey <- read_csv("RiverKey.txt") %>%
+RiverKey <- read_csv("./RiverKey.txt") %>%
     mutate( Pool := factor(Pool, levels = Pool))
 
 PoolKeyTable_SVCP <-
@@ -153,7 +151,7 @@ RiverKey <- rbind(RiverKey,
 RiverKey %>% print(n = Inf)    
 
 coefAll <- coefAll %>%
-    mutate(Pool = factor(Pool, levels = RiverKey$Pool),
+    mutate(Pool = factor(Pool, levels = rev(RiverKey$Pool)),
            River = ifelse(grepl("K|Linf|M", Pool), "Hyper-parameter", River)) %>%
     mutate( River = ifelse(grepl("Mc", Pool), "Ohio River", River)) %>%
     mutate( River = ifelse(grepl("Mar", Pool), "Illinois River", River))
@@ -166,7 +164,9 @@ coefAll <-
            Pool = recode(Pool,
                          M_bar = "Hyper-parameter",
                          Linf_bar = "Hyper-parameter",
-                         K_bar = "Hyper-parameter"))
+                         K_bar = "Hyper-parameter")) %>%
+    mutate(River = ifelse(grepl("Markland", Pool), "Ohio River", River))
+
 
 ## reorder for plotting
 coefAllGG <-
@@ -208,11 +208,6 @@ dat3_SVCP <-
 
 ## Step 2, Extract out hyper projection and site Projections 
 ## Extract out hyperProjections and siteProjections and get age and PoolID
-
-hyperAndSiteProjection_SVCP %>%
-    select(Parameter) %>%
-    distinct() %>% print(n = Inf)
-
 hyperAndSiteProjection_SVCP <-
     stanOutOsummaryDT_SVCP %>%
     select("mean", "2.5%", "10%", "50%", "90%", "97.5%", "Parameter") %>%
@@ -256,10 +251,6 @@ hyperAndSiteProjection_SVCP %>%
     full_join(PoolKeyTable_SVCP_2, by = "PoolID")
 
 ## Repeat for BHCP 
-hyperAndSiteProjection_BHCP %>%
-    select(Parameter) %>%
-    distinct() %>% print(n = Inf)
-
 hyperAndSiteProjection_BHCP <-
     stanOutOsummaryDT_BHCP %>%
     select("mean", "2.5%", "10%", "50%", "90%", "97.5%", "Parameter") %>%
