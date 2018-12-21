@@ -55,8 +55,6 @@ ymax <-    States_outline %>%
     summarize(max(y, na.rm = TRUE)) %>%
     `[[`(1)
 
-
-
 bbPlot <- tibble(
     x = c(xmin, xmin, xmax, xmax, xmin),
     y = c(ymin, ymax, ymax, ymin, ymin))

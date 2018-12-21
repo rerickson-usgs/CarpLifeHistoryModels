@@ -7,18 +7,17 @@ options(mc.cores = parallel::detectCores())
 rerunStan = TRUE
 
 ## Read in a format data
-dat <- fread("../Demographics_082118.csv")
+dat <- fread("../DemographicsData.csv")
 dat[ , Sampdate :=ymd(Sampdate)]
 dat[ , month := month(Sampdate)]
 dat[ is.na(month), month := 5]
-dat[,  FL := as.numeric(FL)]
 
 dat2 <- dat[ !is.na(TL) & !is.na(Age), ]
 dat2[ , Age2 := floor(Age)]
 dat2[ , Age3 := Age2 + (month-5)/12]
 dat2[ , Pool :=factor(Pool)]
-dat2[ , PoolID := as.numeric(Pool)]
 dat2[ , TLm := TL/1000]
+
 
 ## Silver carp SVCP analysis
 dat3_SVCP <- dat2[ Species == "SVCP", ] 
@@ -26,6 +25,8 @@ dat3_SVCP[ , Pool := factor(Pool)]
 dat3_SVCP[ , PoolID := as.numeric(Pool)]
 
 ageProjection = seq(0, 20, by = 1)
+fwrite(file ="SVCP_vonBkey.csv",
+       x = dat3_SVCP[ , .(PoolID = mean(PoolID)) , by = Pool])
 
 stanData_SVCP <- list(
     nFish  = dim(dat3_SVCP)[1],
@@ -68,7 +69,9 @@ plot(stanOutO_SVCP, pars =c("Linf_bar", "K_bar", "Linf"))
 dat3_BHCP <- dat2[ Species == "BHCP", ]
 dat3_BHCP[ , Pool := factor(Pool)]
 dat3_BHCP[ , PoolID := as.numeric(Pool)]
-## Convert to M to stabilisze results
+
+fwrite(file ="BHCP_vonBkey.csv",
+       x = dat3_BHCP[ , .(PoolID = mean(PoolID)) , by = Pool])
 
 stanData_BHCP <- list(
     nFish  = dim(dat3_BHCP)[1],

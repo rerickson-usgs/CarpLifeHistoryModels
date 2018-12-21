@@ -7,7 +7,7 @@ options(mc.cores = parallel::detectCores())
 rerunStan = TRUE
 
 ## Read in a format data
-dat <- fread("../DemographicsData.csv"")
+dat <- fread("../DemographicsData.csv")
 
 dat[ , Sampdate :=ymd(Sampdate)] 
 dat[,  FL := as.numeric(FL)]

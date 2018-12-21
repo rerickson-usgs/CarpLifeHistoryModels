@@ -1,4 +1,10 @@
 *.csv
 *.jpg
 *.pdf
+*.zip
+*.Rda
+*.Rhistory
+*.Rdata
+*.Rapp.history
+*.docx
 *~

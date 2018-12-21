@@ -1,0 +1,56 @@
+---
+title: Supplemental materials for Demographic variability of two invasive species   Mississippi
+  Ohio, and rivers, USA along an invasion gradient--Bighead and silver carps in the
+  Illinois, USA
+author: "Richard Erickson"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r load, echo = FALSE, results='hide',warning=FALSE}
+suppressMessages(library(tidyverse))
+suppressMessages(library(kableExtra))
+
+```
+
+## Parameter estimates for von Bertalanffy growth curve 
+ 
+```{r vonb_load, echo = FALSE, results = 'hide', warning = FALSE, message=FALSE}
+coefAll_vonB <- read_csv("./coefAll_vonB.csv")
+```
+
+```{r vonb_show, echo = FALSE}
+coefAll_vonB %>%
+  select(Species, River, Pool, Parameter, mean, L95, L80, median, U80, U95) %>%
+  kable(., caption = "Parameter estiamtes for von Bertalanffy growth curve. The summary statistics are for the posterior distribution and include the lower (L) and upper (U) 95% and 80% credible intervals.", digits = 3) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+## Parameter estimates for length-weight relationships 
+ 
+```{r lw_load, echo = FALSE, results = 'hide', warning = FALSE, message=FALSE}
+coefAll_LW <- read_csv("./lengthWeightCoefAll.csv") %>%
+  select(River, Pool, Species = SpeciesFull, Parameter = parameter,
+         mean, L95= l95, L80 = l80, median = X50., U80 = u80, U95 = u95)
+```
+
+```{r lw_show, echo = FALSE}
+coefAll_LW %>%
+ select(Species, River, Pool, Parameter, mean, L95, L80, median, U80, U95) %>%
+  kable(., caption = "Parameter estiamtes for length-weight relationship on log-based 10 scale for both length and weight. The summary statistics are for the posterior distribution and include the lower (L) and upper (U) 95% and 80% credible intervals.", digits = 3) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+## Parameter estimates for female maturation curve 
+
+```{r mat_load, echo = FALSE, results = 'hide', warning = FALSE, message=FALSE}
+coefAll_mat <- read_csv("./maturityCoefAll.csv")
+```
+
+```{r mat_show, echo = FALSE}
+coefAll_mat %>%
+  select(Species, Parameter = parameter, mean, L95, L80, median, U80, U95) %>%
+  kable(., caption = "Parameter estiamtes for von Bertalanffy growth curve. The summary statistics are for the posterior distribution and include the lower (L) and upper (U) 95% and 80% credible intervals.", digits = 3) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```

@@ -1,358 +1,176 @@
+## Load required packages 
 library(ggplot2)
 library(lubridate)
 library(rstan)
 library(tidyverse)
-library(plyr)
-library(data.table)
-library(ggrepel)
 
 
 ## Read in demographic data
-dat <- fread("../DemographicsData.csv")
-dat[ , Sampdate :=ymd(Sampdate)] 
-dat[ , Pool := factor(Pool)]
+dat <- read_csv("../DemographicsData.csv")
+dat <- dat %>%
+    select(Sampdate, Year, Pool, Species, TL, Age) %>%
+    mutate(Sampdate =ymd(Sampdate),
+           Pool := factor(Pool),
+           Age2 = floor(Age),
+           TLm = TL/1000,
+           Age3 = Age + (month(Sampdate)-5)/1)
 
-dat2 <- dat[ !is.na(TL) & !is.na(Age), ]
-dat2[ , .N, by = Pool]
-dat2[ , Age2 := floor(Age)]
-dat2[ , Age3 := Age2 + (month(Sampdate)-5)/12]
-dat2[ , Pool :=factor(Pool)]
-dat2[ , levels(Pool)]
-dat2[ , PoolID := as.numeric(Pool)]
+    
+dat2 <- dat %>%
+    filter(!is.na(TL) & !is.na(Age))
+
+dat2 %>%
+    group_by(Pool) %>%
+    summarize(n())
+
 
 ageProjection = seq(0, 20, by = 1)
 
 ## Silver carp data
-dat3_SVCP <- dat2[ Species == "SVCP", ] 
-dat3_SVCP[ , Pool := factor(Pool)]
-dat3_SVCP[ , PoolID := as.numeric(Pool)]
-dat3_SVCP[ , TLm := TL/1000]
-
-dat[ , levels(Pool)]
-dat2[ , levels(Pool)]
+dat3_SVCP <- dat2 %>%
+    filter(Species == "SVCP")
 
 load("../vonB/vonBfitNot0_SVCP.RData")
 
+## Create svcp pool lookup table
+PoolKeyTable_SVCP <- read_csv("../vonB/SVCP_vonBkey.csv")x
+PoolKeyTable_SVCP <- rbind(PoolKeyTable_SVCP,
+                           tibble(Pool = c("Linf_bar", "K_bar", "M_bar"),
+                                  PoolID = c("Linf_bar", "K_bar", "M_bar")))
+PoolKeyTable_SVCP <-
+    PoolKeyTable_SVCP %>%
+    mutate(Pool := factor(Pool))
+    
+RiverKey <- read_csv("RiverKey.txt") %>%
+    mutate( Pool := factor(Pool, levels = Pool))
+
+PoolKeyTable_SVCP <-
+    RiverKey %>%
+    full_join(PoolKeyTable_SVCP) %>%
+    filter( !is.na(PoolID))  %>%
+    mutate(River = ifelse(is.na(River), PoolID, River))
+
+PoolKeyTable_SVCP %>% print(n = Inf)
+
+## Calculate posterior probs 
 stanOutOsummary_SVCP <-
     summary(stanOutO_SVCP, probs = c(0.025, 0.1, 0.50, 0.9, 0.975))
-stanOutOsummaryDT_SVCP <- data.table(stanOutOsummary_SVCP[[1]])
-stanOutOsummaryDT_SVCP[ , Parameter := rownames(stanOutOsummary_SVCP[[1]])]
-poolNames_SVCP <- dat3_SVCP[ , levels(Pool)]
-poolNames_SVCP
+stanOutOsummaryDT_SVCP <- as.tibble(stanOutOsummary_SVCP[[1]])
+stanOutOsummaryDT_SVCP <-
+    stanOutOsummaryDT_SVCP %>%
+    mutate(Parameter = rownames(stanOutOsummary_SVCP[[1]]))
 
-LinfPlot_SVCP <- copy(stanOutOsummaryDT_SVCP[ grepl("Linf", Parameter), ])
-poolNamesDT_SVCP <- data.table(Pool = c(poolNames_SVCP, "Hyper-parameter"),
-                        PoolID = c(1:length(poolNames_SVCP), "Linf_bar"))
-setkey(poolNamesDT_SVCP, "PoolID")
+## Grab Linf, M, and K, hyperProjeciton and siteProjection
+SVCP_coef <- stanOutOsummaryDT_SVCP %>%
+    filter( grepl("K|M|Linf", Parameter)) %>%
+    mutate( PoolID = gsub("(Linf|K|M)(\\[)(\\d+)(\\])", "\\3", Parameter)) %>%
+    select(-se_mean, -sd, - n_eff, -Rhat)
 
-LinfPlot_SVCP[ , PoolID := gsub("(Linf)(\\[)(\\d+)(\\])", "\\3", Parameter) ]
-LinfPlot_SVCP
-poolNamesDT_SVCP
-setkey(LinfPlot_SVCP, "PoolID")
-
-LinfPlot_SVCP <- poolNamesDT_SVCP[ LinfPlot_SVCP]
-setnames(LinfPlot_SVCP,
-         c("2.5%", "10%", "50%",    "90%", "97.5%"),
-         c("L95",  "L80", "median", "U80", "U95"))
-
-LinfPlot_SVCP[ , Pool := factor(Pool)]
-
-
-## growth rates
-KPlot_SVCP <- copy(stanOutOsummaryDT_SVCP[ grepl("K", Parameter), ])
-poolNamesDT_SVCP <- data.table(Pool = c(poolNames_SVCP, "Hyper-parameter"),
-                               PoolID = c(1:length(poolNames_SVCP), "K_bar"))
-
-setkey(poolNamesDT_SVCP, "PoolID")
-
-KPlot_SVCP[ , PoolID := gsub("(K)(\\[)(\\d+)(\\])", "\\3", Parameter) ]
-setkey(KPlot_SVCP, "PoolID")
-
-KPlot_SVCP <- poolNamesDT_SVCP[ KPlot_SVCP]
-setnames(KPlot_SVCP,
-         c("2.5%", "10%", "50%",    "90%", "97.5%"),
-         c("L95",  "L80", "median", "U80", "U95"))
+SVCP_coef %>% print(n = Inf)
+SVCP_coef <- SVCP_coef %>% full_join(PoolKeyTable_SVCP, by = "PoolID") 
+SVCP_coef
 
 
 
-## natural mortality across sites
-MPlot_SVCP <- copy(stanOutOsummaryDT_SVCP[ grepl("M", Parameter), ])
-poolNamesDT_SVCP <- data.table(Pool = c(poolNames_SVCP, "Hyper-parameter"),
-                        PoolID = c(1:length(poolNames_SVCP), "M_bar"))
-setkey(poolNamesDT_SVCP, "PoolID")
-
-MPlot_SVCP[ , PoolID := gsub("(M)(\\[)(\\d+)(\\])", "\\3", Parameter) ]
-setkey(MPlot_SVCP, "PoolID")
-
-MPlot_SVCP <- poolNamesDT_SVCP[ MPlot_SVCP]
-setnames(MPlot_SVCP,
-         c("2.5%", "10%", "50%",    "90%", "97.5%"),
-         c("L95",  "L80", "median", "U80", "U95"))
-
-MPlot_SVCP[ , Pool := factor(Pool)]
-
-
-
-## Extract out hyper projections
-hyperProjection_SVCP <-
-    copy(stanOutOsummaryDT_SVCP[ grepl("hyperProjection", Parameter), ])
-hyperProjection_SVCP[ , age := as.numeric(gsub("hyperProjection|\\[|\\]", "",
-                                               Parameter))]
-hyperProjection_SVCP[ , Pool := "hyper-parameter"]
-
-## Extract out site projections 
-siteProjections_SVCP <- copy(stanOutOsummaryDT_SVCP[ grepl("siteProjection",
-                                                           Parameter)])
-siteProjections_SVCP[ , PoolID := gsub("(siteProjections\\[)(\\d+),(\\d+)\\]",
-                                        "\\2", Parameter)]
-siteProjections_SVCP[ , age := as.numeric(gsub("(siteProjections\\[)(\\d+),(\\d+)\\]",
-                                                "\\3", Parameter))]
-
-setkey(siteProjections_SVCP, "PoolID")
-siteProjections_SVCP<- siteProjections_SVCP[poolNamesDT_SVCP][ Pool!= "Hyper-parameter",]
-siteProjections_SVCP[ , PoolID := NULL]
-
-setnames(siteProjections_SVCP,
-         c("2.5%", "10%", "50%",    "90%", "97.5%"),
-         c("L95",  "L80", "median", "U80", "U95"))
-setnames(hyperProjection_SVCP,
-         c("2.5%", "10%", "50%",    "90%", "97.5%"),
-         c("L95",  "L80", "median", "U80", "U95"))
-
-
-allProjections_SVCP <- rbind(siteProjections_SVCP,
-                             hyperProjection_SVCP)
-
-
-## bighead carp data
-dat3_BHCP <- dat2[ Species == "BHCP", ] 
-dat3_BHCP[ , Pool := factor(Pool)]
-dat3_BHCP[ , PoolID := as.numeric(Pool)]
-dat3_BHCP[ , TLm := TL/1000]
+## BHCP data
+dat3_BHCP <- dat2 %>%
+    filter(Species == "BHCP")
 
 load("../vonB/vonBfitNot0_BHCP.RData")
 
+## Create bhcp pool lookup table
+PoolKeyTable_BHCP <- read_csv("../vonB/BHCP_vonBkey.csv")
+PoolKeyTable_BHCP <- rbind(PoolKeyTable_BHCP,
+                           tibble(Pool = c("Linf_bar", "K_bar", "M_bar"),
+                                  PoolID = c("Linf_bar", "K_bar", "M_bar")))
+PoolKeyTable_BHCP <-
+    PoolKeyTable_BHCP %>%
+    mutate(Pool := factor(Pool))
+    
+RiverKey <- read_csv("RiverKey.txt") %>%
+    mutate( Pool := factor(Pool, levels = Pool))
+
+PoolKeyTable_BHCP <-
+    RiverKey %>%
+    full_join(PoolKeyTable_BHCP) %>%
+    filter( !is.na(PoolID))  %>%
+    mutate(River = ifelse(is.na(River), PoolID, River))
+
+PoolKeyTable_BHCP %>% print(n = Inf)
+
+## Calculate posterior probs 
 stanOutOsummary_BHCP <-
     summary(stanOutO_BHCP, probs = c(0.025, 0.1, 0.50, 0.9, 0.975))
-stanOutOsummaryDT_BHCP <- data.table(stanOutOsummary_BHCP[[1]])
-stanOutOsummaryDT_BHCP[ , Parameter := rownames(stanOutOsummary_BHCP[[1]])]
-poolNames_BHCP <- dat3_BHCP[ , levels(Pool)]
-poolNames_BHCP
+stanOutOsummaryDT_BHCP <- as.tibble(stanOutOsummary_BHCP[[1]])
+stanOutOsummaryDT_BHCP <-
+    stanOutOsummaryDT_BHCP %>%
+    mutate(Parameter = rownames(stanOutOsummary_BHCP[[1]]))
 
-LinfPlot_BHCP <- copy(stanOutOsummaryDT_BHCP[ grepl("Linf", Parameter), ])
-poolNamesDT_BHCP <- data.table(Pool = c(poolNames_BHCP, "Hyper-parameter"),
-                        PoolID = c(1:length(poolNames_BHCP), "Linf_bar"))
-setkey(poolNamesDT_BHCP, "PoolID")
+## Grab Linf, M, and K, hyperProjeciton and siteProjection
+BHCP_coef <- stanOutOsummaryDT_BHCP %>%
+    filter( grepl("K|M|Linf", Parameter)) %>%
+    mutate( PoolID = gsub("(Linf|K|M)(\\[)(\\d+)(\\])", "\\3", Parameter)) %>%
+    select(-se_mean, -sd, - n_eff, -Rhat)
 
-LinfPlot_BHCP[ , PoolID := gsub("(Linf)(\\[)(\\d+)(\\])", "\\3", Parameter) ]
-LinfPlot_BHCP
-poolNamesDT_BHCP
-setkey(LinfPlot_BHCP, "PoolID")
-
-LinfPlot_BHCP <- poolNamesDT_BHCP[ LinfPlot_BHCP]
-setnames(LinfPlot_BHCP,
-         c("2.5%", "10%", "50%",    "90%", "97.5%"),
-         c("L95",  "L80", "median", "U80", "U95"))
-
-LinfPlot_BHCP[ , Pool := factor(Pool)]
+BHCP_coef %>% print(n = Inf)
+BHCP_coef <- BHCP_coef %>% full_join(PoolKeyTable_BHCP, by = "PoolID") 
+BHCP_coef
 
 
-## growth rates
-KPlot_BHCP <- copy(stanOutOsummaryDT_BHCP[ grepl("K", Parameter), ])
-poolNamesDT_BHCP <- data.table(Pool = c(poolNames_BHCP, "Hyper-parameter"),
-                               PoolID = c(1:length(poolNames_BHCP), "K_bar"))
-
-setkey(poolNamesDT_BHCP, "PoolID")
-
-KPlot_BHCP[ , PoolID := gsub("(K)(\\[)(\\d+)(\\])", "\\3", Parameter) ]
-setkey(KPlot_BHCP, "PoolID")
-
-KPlot_BHCP <- poolNamesDT_BHCP[ KPlot_BHCP]
-setnames(KPlot_BHCP,
-         c("2.5%", "10%", "50%",    "90%", "97.5%"),
-         c("L95",  "L80", "median", "U80", "U95"))
+## Merge together coefficients
+BHCP_coef <- BHCP_coef %>%
+    mutate(Species = "Bighead carp")
+SVCP_coef <- SVCP_coef %>%
+    mutate(Species = "Silver carp")
 
 
+coefAll <- rbind(BHCP_coef, SVCP_coef)  %>% select( -"x", -"y")
+coefAll <- coefAll %>%
+    mutate(Parameter = gsub("(Linf|K|M)(\\[)(\\d+)(\\])", "\\1", Parameter))
+coefAll <- coefAll %>%
+    mutate( Parameter = gsub("_bar", "", Parameter)) %>%
+    mutate( ParameterPlot =  factor(Parameter,
+                                    levels = c("Linf", "K", "M"),
+                                    labels = c(expression(italic(K)),
+                                               expression(italic(L)[infinity]),
+                                               expression(italic(M)))))
+colnames(coefAll)[2:6] <- c("L95", "L80", "median", "U80", "U95")
 
-## natural mortality across sites
-MPlot_BHCP <- copy(stanOutOsummaryDT_BHCP[ grepl("M", Parameter), ])
-poolNamesDT_BHCP <- data.table(Pool = c(poolNames_BHCP, "Hyper-parameter"),
-                        PoolID = c(1:length(poolNames_BHCP), "M_bar"))
-setkey(poolNamesDT_BHCP, "PoolID")
+## Save coef estimates
+write_csv(coefAll, "coefAll_vonB.csv")
 
-MPlot_BHCP[ , PoolID := gsub("(M)(\\[)(\\d+)(\\])", "\\3", Parameter) ]
-setkey(MPlot_BHCP, "PoolID")
+## Reorder factors for plotting 
+RiverKey <- read_csv("RiverKey.txt") %>%
+    filter(Pool != "Hyper-parameter") %>%
+    select(-"x", -"y")
 
-MPlot_BHCP <- poolNamesDT_BHCP[ MPlot_BHCP]
-setnames(MPlot_BHCP,
-         c("2.5%", "10%", "50%",    "90%", "97.5%"),
-         c("L95",  "L80", "median", "U80", "U95"))
-
-MPlot_BHCP[ , Pool := factor(Pool)]
-
-
-
-## Extract out hyper projections
-hyperProjection_BHCP <-
-    copy(stanOutOsummaryDT_BHCP[ grepl("hyperProjection", Parameter), ])
-hyperProjection_BHCP[ , age := as.numeric(gsub("hyperProjection|\\[|\\]", "",
-                                               Parameter))]
-hyperProjection_BHCP[ , Pool := "hyper-parameter"]
-
-## Extract out site projections 
-siteProjections_BHCP <- copy(stanOutOsummaryDT_BHCP[ grepl("siteProjection",
-                                                           Parameter)])
-siteProjections_BHCP[ , PoolID := gsub("(siteProjections\\[)(\\d+),(\\d+)\\]",
-                                        "\\2", Parameter)]
-siteProjections_BHCP[ , age := as.numeric(gsub("(siteProjections\\[)(\\d+),(\\d+)\\]",
-                                                "\\3", Parameter))]
-
-setkey(siteProjections_BHCP, "PoolID")
-siteProjections_BHCP<- siteProjections_BHCP[poolNamesDT_BHCP][ Pool!= "Hyper-parameter",]
-siteProjections_BHCP[ , PoolID := NULL]
-
-setnames(siteProjections_BHCP,
-         c("2.5%", "10%", "50%",    "90%", "97.5%"),
-         c("L95",  "L80", "median", "U80", "U95"))
-setnames(hyperProjection_BHCP,
-         c("2.5%", "10%", "50%",    "90%", "97.5%"),
-         c("L95",  "L80", "median", "U80", "U95"))
+RiverKey <- rbind(RiverKey,
+                  tibble(River = rep("Hyper-parameter", 3),
+                         Pool = c("Linf_bar", "K_bar", "M_bar"))) %>%
+    filter(  Pool %in%  unique(coefAll$Pool))
 
 
-allProjections_BHCP <- rbind(siteProjections_BHCP,
-                             hyperProjection_BHCP)
+RiverKey %>% print(n = Inf)    
 
+coefAll <- coefAll %>%
+    mutate(Pool = factor(Pool, levels = RiverKey$Pool),
+           River = ifelse(grepl("K|Linf|M", Pool), "Hyper-parameter", River)) %>%
+    mutate( River = ifelse(grepl("Mc", Pool), "Ohio River", River)) %>%
+    mutate( River = ifelse(grepl("Mar", Pool), "Illinois River", River))
 
+levels(coefAll$Pool)
 
+coefAll <-
+    coefAll %>%
+    mutate(River = ifelse(grepl("JT Myers", Pool), "Ohio River", River),
+           Pool = recode(Pool,
+                         M_bar = "Hyper-parameter",
+                         Linf_bar = "Hyper-parameter",
+                         K_bar = "Hyper-parameter"))
 
-## Plot natural mortality across sites
-MPlot_BHCP <- copy(stanOutOsummaryDT_BHCP[ grepl("M", Parameter), ])
-poolNamesDT_BHCP <- data.table(Pool = c(poolNames_BHCP, "Hyper-parameter"),
-                        PoolID = c(1:length(poolNames_BHCP), "M_bar"))
-setkey(poolNamesDT_BHCP, "PoolID")
-
-MPlot_BHCP[ , PoolID := gsub("(M)(\\[)(\\d+)(\\])", "\\3", Parameter) ]
-setkey(MPlot_BHCP, "PoolID")
-
-MPlot_BHCP <- poolNamesDT_BHCP[ MPlot_BHCP]
-setnames(MPlot_BHCP,
-         c("2.5%", "10%", "50%",    "90%", "97.5%"),
-         c("L95",  "L80", "median", "U80", "U95"))
-
-MPlot_BHCP[ , Pool := factor(Pool)]
-
-
-
-## Extract out hyper projections
-hyperProjection_BHCP <-
-    copy(stanOutOsummaryDT_BHCP[ grepl("hyperProjection", Parameter), ])
-hyperProjection_BHCP[ , age := as.numeric(gsub("hyperProjection|\\[|\\]", "",
-                                               Parameter))]
-hyperProjection_BHCP[ , Pool := "hyper-parameter"]
-
-## Extract out site projections 
-siteProjections_BHCP <- copy(stanOutOsummaryDT_BHCP[ grepl("siteProjection",
-                                                           Parameter)])
-siteProjections_BHCP[ , PoolID := gsub("(siteProjections\\[)(\\d+),(\\d+)\\]",
-                                        "\\2", Parameter)]
-siteProjections_BHCP[ , age := as.numeric(gsub("(siteProjections\\[)(\\d+),(\\d+)\\]",
-                                                "\\3", Parameter))]
-
-setkey(siteProjections_BHCP, "PoolID")
-
-siteProjections_BHCP<- siteProjections_BHCP[poolNamesDT_BHCP][ Pool!= "Hyper-parameter",]
-siteProjections_BHCP
-siteProjections_BHCP[ , PoolID := NULL]
-
-setnames(siteProjections_BHCP,
-         c("2.5%", "10%", "50%",    "90%", "97.5%"),
-         c("L95",  "L80", "median", "U80", "U95"))
-setnames(hyperProjection_BHCP,
-         c("2.5%", "10%", "50%",    "90%", "97.5%"),
-         c("L95",  "L80", "median", "U80", "U95"))
-
-
-allProjections_BHCP <- rbind(siteProjections_BHCP,
-                             hyperProjection_BHCP)
-
-
-## Merge and plot both species
-MPlot_SVCP[ , Species := "Silver carp"]
-MPlot_BHCP[ , Species := "Bighead carp"]
-MPlot <- rbind(MPlot_SVCP, MPlot_BHCP)
-
-
-LinfPlot_SVCP[ , Species :="Silver carp"]
-LinfPlot_BHCP[ , Species :="Bighead carp"]
-LinfPlot <- rbind(LinfPlot_SVCP,
-                  LinfPlot_BHCP)
-
-KPlot_SVCP[ , Species := "Silver carp"]
-KPlot_BHCP[ , Species := "Bighead carp"]
-
-KPlot <- rbind(KPlot_SVCP, KPlot_BHCP)
-
-
-LinfPlot[ , Parameter := "Linfinty"]
-KPlot[ , Parameter := "K"]
-MPlot[ , Parameter := "M"]
-coefAll <- rbind(LinfPlot,KPlot, MPlot)
-coefAll
-
-## Merge in River key here
-RiverKey <- fread("RiverKey.txt")
-RiverKey[ , Pool := factor(Pool, levels = Pool)]
-coefAll[ , levels(Pool)]
-RiverKey[ , levels(Pool)]
-RiverKey[ which( !levels(Pool) %in% coefAll[ , levels(Pool)]), ]
-coefAll[ which( !levels(Pool) %in% RiverKey[ , levels(Pool)]),]
-RiverKey <- RiverKey[ which(levels(Pool) %in% coefAll[ , levels(Pool)]), ]
-RiverKey[ , Pool := factor(Pool)]
-setkey(coefAll, "Pool")
-setkey(RiverKey, "Pool")
-coefAll <- RiverKey[coefAll]
-coefAll[ , Pool := factor(Pool, levels = RiverKey[ , Pool])]
-coefAll[ ! complete.cases(coefAll),]
-
-
-
-hyperProjection_SVCP[ , Species := "Silver carp"]
-hyperProjection_BHCP[ , Species := "Bighead carp"]
-
-hyperProjection <-  rbind(hyperProjection_SVCP,
-                          hyperProjection_BHCP)
-
-hyperProjection[ , Pool := factor(Pool)]
-allProjections_SVCP[ , Species := "Silver carp"]
-allProjections_BHCP[ , Species := "Bighead carp"]
-allProjections <- rbind(allProjections_SVCP,
-                        allProjections_BHCP)
-siteProjections_SVCP[ , Species := "Silver carp"]
-siteProjections_BHCP[ , Species := "Bighead carp"]
-siteProjections <- rbind(siteProjections_SVCP,
-                         siteProjections_BHCP)
-
-datGG <- rbind(dat3_SVCP,
-               dat3_BHCP)
-datGG[ , Pool := factor(Pool)]
-
-## Plot data
-coefAll[, ParameterPlot := factor(Parameter)]
-levels(coefAll$ParameterPlot) <-
-    c(expression(italic(K)),
-      expression(italic(L)[infinity]),
-      expression(italic(M)))
-levels(coefAll$ParameterPlot)
-
-## Remove maximum value 
-coefAllOhio <- coefAll[ grepl("Ohio", River), ]
-coefAllNotOhio <- coefAll[ !grepl("Ohio", River), ]
-
-coefAllOhio[ , Pool2 := factor(Pool, levels = rev(levels(Pool)))]
-coefAllNotOhio[ , Pool2 := factor(Pool, levels = rev(levels(Pool)))]
-
-
-coefAllGGOhio <- ggplot(data = coefAllOhio, aes(x = Pool2, y = median,
+## reorder for plotting
+coefAllGG <-
+    ggplot(data = coefAll, aes(x = Pool, y = median,
                                         color = River)) +
     geom_point(size = 1.5) +
     geom_linerange(aes(ymin = L80, ymax = U80), size = 1.3)  +
@@ -364,70 +182,199 @@ coefAllGGOhio <- ggplot(data = coefAllOhio, aes(x = Pool2, y = median,
                scales = "free") + 
     ylab("Estimate") +
     scale_color_manual(values = c("black", "blue", "seagreen", "orange")) 
-print(coefAllGGOhio)
-
-ggsave("VB_coefOhio.pdf", coefAllGGOhio, width = 6, height = 4)
-
-##
-coefAllGGNotOhio <- ggplot(data = coefAllNotOhio, aes(x = Pool2, y = median,
-                                        color = River)) +
-    geom_point(size = 1.5) +
-    geom_linerange(aes(ymin = L80, ymax = U80), size = 1.3)  +
-    geom_linerange(aes(ymin = L95, ymax = U95), size = 0.5)  +
-    coord_flip() +
-    theme_minimal() +
-    facet_grid( Species ~ ParameterPlot,
-               labeller = labeller(ParameterPlot = label_parsed),
-               scales = "free") + 
-    ylab("Estimate") +
-    scale_color_manual(values = c("black", "blue", "seagreen", "orange")) 
-print(coefAllGGNotOhio)
-
-ggsave("VB_coefNotOhio.pdf", coefAllGGNotOhio, width = 6, height = 4)
-
-
-datGG[ , Species := ifelse(Species == "SVCP", "Silver carp", "Bighead carp")]
-
-
-setkey(datGG, "Pool")
-setkey(datGG, "Pool")
-datGG <- RiverKey[ River != "Hyper-parameter",][datGG]
-
-setkey(siteProjections, "Pool")
-siteProjections <- RiverKey[ River != "Hyper-parameter",][siteProjections]
-
-
-RiverKey2 <- RiverKey[ Pool  %in% datGG[ ,unique(Pool)], ]
+print(coefAllGG)
 
 
 
-datGG[ , Pool2 := factor(Pool, levels = RiverKey2[ , Pool])]
-siteProjections[ , Pool2 := factor(Pool, levels = RiverKey2[ , Pool])]
 
-dataVBplot <- ggplot() + 
-    geom_point(data = datGG, aes(x = Age3, y = TLm), alpha = 0.1) +
+##############################################################
+##############################################################
+##############################################################
+## Now, create site and hyper-parameter table 
+
+## SVCP 1st 
+## Create lookup tables for hyper and site projections
+
+## Step 1, order dat3 based upon pool key table 
+PoolOrder <- 
+    PoolKeyTable_SVCP %>%
+    filter(!grepl("_bar", Pool)) %>%
+    pull(Pool)
+PoolOrder
+
+dat3_SVCP <-
+    dat3_SVCP %>%
+    mutate(Pool2 = factor(Pool, levels = PoolOrder))
+
+## Step 2, Extract out hyper projection and site Projections 
+## Extract out hyperProjections and siteProjections and get age and PoolID
+
+hyperAndSiteProjection_SVCP %>%
+    select(Parameter) %>%
+    distinct() %>% print(n = Inf)
+
+hyperAndSiteProjection_SVCP <-
+    stanOutOsummaryDT_SVCP %>%
+    select("mean", "2.5%", "10%", "50%", "90%", "97.5%", "Parameter") %>%
+    filter( grepl("hyperProjection|siteProjections", Parameter)) %>%
+    mutate( age = as.numeric(if_else(
+                grepl("hyperProjection", Parameter),
+                gsub("hyperProjection||\\[|\\]", "", Parameter),
+                gsub("(siteProjections\\[)(\\d+),(\\d+)\\]", "\\3", Parameter))),
+           PoolID = if_else(
+               grepl("hyperProjection", Parameter),
+               "Hyper-parameter", 
+               gsub("(siteProjections\\[)(\\d+),(\\d+)\\]", "\\2", Parameter))
+           )
+
+    
+
+colnames(hyperAndSiteProjection_SVCP)[2:6] <- c("L95", "L80", "median", "U80", "U95")
+colnames(hyperAndSiteProjection_SVCP)
+
+hyperAndSiteProjection_SVCP %>%
+    filter( grepl("hyperProjection", Parameter)) %>%
+    print(n = Inf)
+
+hyperAndSiteProjection_SVCP %>%
+    filter( !grepl("hyperProjection", Parameter)) %>%
+    select(Parameter, age, PoolID)
+
+tibble_HP <- tibble(
+    River = "Hyper-parameter",
+    Pool =  "Hyper-parameter",
+    x = NA, y = NA,
+    PoolID = "Hyper-parameter")
+
+PoolKeyTable_SVCP_2 <-
+    PoolKeyTable_SVCP %>%
+    filter( !grepl( "_bar", PoolID)) %>%
+    bind_rows(tibble_HP)
+
+hyperAndSiteProjection_SVCP <- 
+hyperAndSiteProjection_SVCP %>%
+    full_join(PoolKeyTable_SVCP_2, by = "PoolID")
+
+## Repeat for BHCP 
+hyperAndSiteProjection_BHCP %>%
+    select(Parameter) %>%
+    distinct() %>% print(n = Inf)
+
+hyperAndSiteProjection_BHCP <-
+    stanOutOsummaryDT_BHCP %>%
+    select("mean", "2.5%", "10%", "50%", "90%", "97.5%", "Parameter") %>%
+    filter( grepl("hyperProjection|siteProjections", Parameter)) %>%
+    mutate( age = as.numeric(if_else(
+                grepl("hyperProjection", Parameter),
+                gsub("hyperProjection||\\[|\\]", "", Parameter),
+                gsub("(siteProjections\\[)(\\d+),(\\d+)\\]", "\\3", Parameter))),
+           PoolID = if_else(
+               grepl("hyperProjection", Parameter),
+               "Hyper-parameter", 
+               gsub("(siteProjections\\[)(\\d+),(\\d+)\\]", "\\2", Parameter))
+           )
+
+    
+
+colnames(hyperAndSiteProjection_BHCP)[2:6] <- c("L95", "L80", "median", "U80", "U95")
+colnames(hyperAndSiteProjection_BHCP)
+
+hyperAndSiteProjection_BHCP %>%
+    filter( grepl("hyperProjection", Parameter)) %>%
+    print(n = Inf)
+
+hyperAndSiteProjection_BHCP %>%
+    filter( !grepl("hyperProjection", Parameter)) %>%
+    select(Parameter, age, PoolID)
+
+tibble_HP <- tibble(
+    River = "Hyper-parameter",
+    Pool =  "Hyper-parameter",
+    x = NA, y = NA,
+    PoolID = "Hyper-parameter")
+
+PoolKeyTable_BHCP_2 <-
+    PoolKeyTable_BHCP %>%
+    filter( !grepl( "_bar", PoolID)) %>%
+    bind_rows(tibble_HP)
+
+hyperAndSiteProjection_BHCP <- 
+hyperAndSiteProjection_BHCP %>%
+    full_join(PoolKeyTable_BHCP_2, by = "PoolID")
+
+hyperAndSiteProjection_BHCP
+
+## Merge together data sets
+hyperAndSiteProjection_BHCP <-
+    hyperAndSiteProjection_BHCP %>%
+    mutate(Species = "Bighead carp")
+
+hyperAndSiteProjection_SVCP <-
+    hyperAndSiteProjection_SVCP %>%
+    mutate(Species = "Silver carp")
+
+
+
+hyperAndSiteProjection <- 
+    hyperAndSiteProjection_BHCP %>%
+    bind_rows( hyperAndSiteProjection_SVCP)
+
+## Reorder dat so both can be
+
+PoolOrder <- 
+    PoolKeyTable_SVCP %>%
+    filter(!grepl("_bar", Pool)) %>%
+    pull(Pool)
+
+
+RiverKey <-
+    read_csv("RiverKey.txt") %>%
+    filter(!grepl("Hyper-parameter", River)) %>%
+    mutate(Pool = factor(Pool, levels = Pool))
+
+RiverKey %>%
+    pull(Pool) %>%
+    levels(.)
+
+dat3 <-
+    dat2 %>% 
+    mutate(Pool = factor(Pool, levels = PoolOrder)) %>%
+    full_join(RiverKey, by = "Pool")  %>%
+    filter(!is.na(Age3)) %>%
+    mutate(Species = recode(Species,
+                            SVCP = "Silver carp",
+                            BHCP = "Bighead carp"))
+
+## extract out site projections
+siteProjection <-
+    hyperAndSiteProjection %>%
+    filter(grepl("site", Parameter))
+
+dataVBplot <-
+    ggplot() + 
+    geom_point(data = dat3, aes(x = Age3, y = TLm), alpha = 0.1) + 
     xlab("Age (years)") +
-    ylab("Length (m)") + theme_minimal() + 
-    geom_line(data = siteProjections,
-              aes(x = age - 1, y = mean, color = River))   + 
-    geom_ribbon(data = siteProjections,
+    ylab("Length (m)") + theme_minimal() +
+    facet_grid( Species ~ River + Pool) +
+    geom_line(data = siteProjection ,
+              aes(x = age - 1, y = mean, color = River)) + 
+    geom_ribbon(data = siteProjection,
                 aes(x = age - 1, ymin = L80, ymax = U80, fill = River),
                 alpha = 0.25)  +
-    geom_ribbon(data = siteProjections,
+    geom_ribbon(data = siteProjection,
                 aes(x = age -1, ymin = L95, ymax = U95, fill = River),
                 alpha = 0.25)  +
-    facet_grid( Species ~ River + Pool2) +
     scale_x_continuous(breaks = seq(0, max(ageProjection), by = 5)) +
     scale_color_manual(values = c( "blue", "seagreen", "orange")) +
     scale_fill_manual(values = c( "blue", "seagreen", "orange")) +
     theme(legend.position="none")
-
 print(dataVBplot)
-datGG[ , .N, by = .(Pool, Species)]
+
 ggsave("dataVBplotNot0.pdf", dataVBplot, width = 14, height = 8)
 
-hyperProjection_SVCP
-hyperProjection
+hyperProjection <- 
+    hyperAndSiteProjection %>%
+    filter( grepl("hyper", Parameter))
 
 hyperPlot <-
     ggplot(data = hyperProjection, aes(x = age - 1, y = mean)) +
@@ -436,7 +383,7 @@ hyperPlot <-
                 alpha = 0.25) + 
     geom_ribbon(aes(x = age -1, ymin = L80, ymax = U80), fill = 'grey50',
                 alpha = 0.25) +
-    geom_line(data = siteProjections,
+    geom_line(data = siteProjection,
               aes(x = age -1, y = mean, group = Pool),
               size = 1.1) +
     xlab("Age (years)") +
@@ -450,7 +397,7 @@ ggsave("hyperPlotNot0.pdf", hyperPlot, width = 8, height = 4)
 ggsave("hyperPlotNot0.jpg", hyperPlot, width = 6, height = 4)
 
 
-poolNames <- siteProjections %>%
+poolNames <- siteProjection %>%
     filter(age == 21)
 
 
@@ -499,8 +446,8 @@ hyperPlot <-
     geom_ribbon(aes(x = age -1, ymin = L95, ymax = U95), fill = 'grey50',
                 alpha = 0.25) + 
     geom_ribbon(aes(x = age -1, ymin = L80, ymax = U80), fill = 'grey50',
-                alpha = 0.25) +
-    geom_line(data = siteProjections,
+                alpha = 0.25) + 
+    geom_line(data = siteProjection,
               aes(x = age -1, y = mean, group = Pool, color = Pool),
               size = 1.1) +
     xlab("Age (years)") +
@@ -526,54 +473,48 @@ ggsave("hyperPlotNot0.jpg", hyperPlotWithLabel, width = 8, height = 6)
 ## export data for simulations
 head(coefAll)
 
-coefAll[ order(abs(mean - median)), .(Pool, River, Parameter, mean, median)]
-
-head(coefAll)
-
-ggplot(coefAll[ Species == "Bighead carp", ], aes(x = Pool, y = mean)) +
-    geom_linerange(aes(ymin = L95, ymax = U95), size = 2)+ 
-    geom_linerange(aes(ymin = mean + qnorm(0.025) * sd , ymax = mean + qnorm(0.975) * sd), size = 1, color = 'red')+ 
-    geom_point(size = 3) +
-    facet_grid(Species ~ Parameter, scale = "free_y") + 
-    coord_flip()
                 
-fwrite(coefAll, "coefAll_vonB.csv")
+write_csv(coefAll, "coefAll_vonB.csv")
 
 ## Plot coefficents and data for MS.
-RiverKey <- fread("RiverKey.txt")
-RiverKey
-RiverKey <- RiverKey[ River != "Hyper-parameter"]
-setkey(RiverKey, "Pool")
-setkey(coefAll, "Pool")
+RiverKey <- read_csv("RiverKey.txt") %>%
+    filter( River != "Hyper-parameter" )
 
-coefRiver <- RiverKey[coefAll]
-colnames(coefRiver)
 
-coefRiver2 <- coefRiver[ !is.na(River), ]
+coefRiver <-
+    coefAll %>%
+    full_join(RiverKey) %>%
+    filter(!is.na(PoolID )) %>%
+    filter(!grepl("Hyper", River))
 
-vonBLat <- ggplot(coefRiver2, aes(x = mean, y = y)) +
-    geom_point(aes(x = mean, y = y, shape = River)) +
+
+
+vonBLat <-
+    ggplot(coefRiver, aes(x = y, y = mean)) +
+    geom_point(aes(y = mean, x = y, shape = River)) +
     facet_grid( Species ~ ParameterPlot,
                labeller = labeller(ParameterPlot = label_parsed),
                scales = "free_x")  +
-    ylab("Latitude") +
-    xlab("Parameter estimate") +
+    xlab("Latitude") +
+    ylab("Parameter estimate") +
     geom_smooth(method = 'lm', se =FALSE) +
     theme_bw() +
     theme(strip.background = element_blank()) 
 print(vonBLat)
 ggsave("vonBLat.pdf", width = 6, height = 4)
 
-colnames(coefRiver)
 
+## Expand data for some other plotting 
 coefRiverWide <- coefRiver %>%
     select(River, Pool, x, y, mean, Parameter, Species) %>%
     spread(Parameter, mean)
 
+coefRiverWide
+
 library(GGally)
 
 ggPairsData <- coefRiverWide %>%
-    select(Linfinty, K, M)
+    select(Linf, K, M)
 
 pairsPlot <- ggpairs(ggPairsData) +
     theme_bw() +
@@ -581,35 +522,26 @@ pairsPlot <- ggpairs(ggPairsData) +
 pairsPlot
 ggsave("pairsPlot.pdf", width = 6, height = 6)
 
-coefRiverWide
-ggplot(coefRiverWide, aes(x = K, y = Linfinty)) +
-    geom_point() +
-    facet_grid( . ~ Species) 
-
 ## Plot data
-RiverKey <- fread("RiverKey.txt")
-RiverKey[ , Pool := factor(Pool, levels = Pool)]
+RiverKey <- read_csv("RiverKey.txt") %>%
+    filter( River != "Hyper-parameter" )
 
-setkey(RiverKey, "Pool")
 
-setkey(dat, "Pool")
-dat2 <- RiverKey[dat]
-dat2[ , Pool := factor(Pool, levels = rev(RiverKey[ , Pool]))]
-dat2[ , Age2 := floor(Age)]
-dat2[ , Age3 := Age2 + (month(Sampdate)-5)/12]
-
-dat3 <- dat2[Species %in% c("BHCP", "SVCP")]
-
-dat3[ , SpeciesPlot := factor(Species,
-                              levels = c("BHCP", "SVCP"),
-                              labels = c("Bighead carp",
-                                         "Silver carp"))]
-dat3[ , .(Species, SpeciesPlot)]
+dat2a <-
+    dat %>% 
+    mutate(Species = recode(Species,
+                            SVCP = "Silver carp",
+                            BHCP = "Bighead carp"))
+dat3a <-
+    dat2a %>%
+    full_join(RiverKey, by = 'Pool') %>%
+    filter(!is.na(River) & !is.na(Species))
                                                   
-lengthPlot <- ggplot(dat3, aes(x = Pool, y = TL/1000)) +
+lengthPlot <-
+    ggplot(dat3a, aes(x = Pool, y = TLm)) +
     geom_violin(draw_quantiles = .5) +
     geom_point(size = 0.4) + 
-    facet_grid( River ~ SpeciesPlot, scales = 'free_y') +
+    facet_grid( River ~ Species, scales = 'free_y') +
     coord_flip() +
     theme_bw() +
     theme(strip.background = element_blank()) + 
@@ -618,12 +550,14 @@ print(lengthPlot)
 ggsave("lengthPlot.pdf", width = 6, height = 6)
 
 
-datAge <- dat3[ !is.na(Age3), ]
-datAge[ Pool =="Pool 22",]
+datAge <-
+    dat3a %>%
+    filter(!is.na(Age3))
+
 agePlot <- ggplot(datAge, aes(x = Pool, y = Age3)) +
     geom_violin(draw_quantiles = .5) +
     geom_point(size = 0.4) + 
-    facet_grid( River ~ SpeciesPlot, scales = 'free_y') +
+    facet_grid( River ~ Species, scales = 'free_y') +
     coord_flip() +
     theme_bw() +
     theme(strip.background = element_blank()) + 

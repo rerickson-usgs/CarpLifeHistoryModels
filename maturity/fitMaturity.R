@@ -39,10 +39,9 @@ ggplot(dat2[ Species %in% c( "SVCP", "BHCP"), ], aes(x = TLm, y = M2)) +
 ggplot(dat2[ Species %in% c( "SVCP", "BHCP"), ], aes(x = TLm, y = M2)) +
     geom_smooth(method = 'glm',  method.args = list(family = "binomial")) + 
     geom_point(alpha = 0.25) +
-    facet_grid( Species~. ) +
+    facet_grid( System ~ Species) +
     xlab("Length (m)") +
     ylab("Maturity") + theme_minimal()
-
 
 ### Fit Model to SVCP
 dataInSVCP <- seq(dat3SVCP[, range(TLm)[1]], dat3SVCP[, range(TLm)[2]], by = 0.001)
@@ -56,11 +55,11 @@ stanDataSVCP <- list(
 )
 
 names(stanDataSVCP)
-## stanOutSVCP <- stan(file = "maturity.stan", data = stanDataSVCP, chains = 4, iter = 6000,
-##                     control = list(adapt_delta = 0.8))
-## save(file = "logisticRegressionSVCP.Rda", x = stanOutSVCP)
+stanOutSVCP <- stan(file = "maturity.stan", data = stanDataSVCP, chains = 4, iter = 6000,
+                    control = list(adapt_delta = 0.8))
+save(file = "logisticRegressionSVCP.Rda", x = stanOutSVCP)
 
-load("logisticRegressionSVCP.Rda")
+## load("logisticRegressionSVCP.Rda")
 
 print(stanOutSVCP, pars = c("alpha", "beta", "lp__"))
 plot(stanOutSVCP, pars = c("alpha", "beta"))
@@ -135,10 +134,10 @@ stanDataBHCP <- list(
 
 names(stanDataBHCP)
 
-## stanOutBHCP <- stan(file = "maturity.stan", data = stanDataBHCP, chains = 4, iter = 6000,
-##                     control = list(adapt_delta = 0.8))
-## save(file = "logisticRegressionBHCP.Rda", x = stanOutBHCP)
-load("logisticRegressionBHCP.Rda")
+stanOutBHCP <- stan(file = "maturity.stan", data = stanDataBHCP, chains = 4, iter = 6000,
+                    control = list(adapt_delta = 0.8))
+save(file = "logisticRegressionBHCP.Rda", x = stanOutBHCP)
+## load("logisticRegressionBHCP.Rda")
 
 print(stanOutBHCP, pars = c("alpha", "beta", "lp__"))
 plot(stanOutBHCP, pars = c("alpha", "beta"))

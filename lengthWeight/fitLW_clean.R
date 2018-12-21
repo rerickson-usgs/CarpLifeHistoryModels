@@ -39,6 +39,10 @@ x_SVCP  = dat3_SVCP[ , model.matrix( ~ TLmL10)]
 groupPredictKey_SVCP <-
     dat3_SVCP[ , .(PoolID =mean(PoolID)), by = Pool][ order(PoolID),]
 
+print( groupPredictKey_SVCP)
+fwrite(x = groupPredictKey_SVCP, file = "./SVCP_lw_key.csv")
+
+
 
 u_SVCP  = matrix(rep(1, length(dat3_SVCP[, unique(PoolID)])), ncol = 1)
 
@@ -95,6 +99,9 @@ x_BHCP  = dat3_BHCP[ , model.matrix( ~ TLmL10)]
 
 groupPredictKey_BHCP <-
     dat3_BHCP[ , .(PoolID =mean(PoolID)), by = Pool][ order(PoolID),]
+
+fwrite(x = groupPredictKey_BHCP, file = "./BHCP_lw_key.csv")
+print( groupPredictKey_BHCP)
 
 u_BHCP  = matrix(rep(1, length(dat3_BHCP[, unique(PoolID)])), ncol = 1)
 

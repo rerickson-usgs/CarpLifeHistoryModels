@@ -1,54 +1,106 @@
 library(ggplot2)
 library(lubridate)
-library(rstan)
 library(tidyverse)
-library(data.table)
 library(scales)
+library(rstan)
 
 ## Read in a format data
-dat <- fread("../DemographicsData.csv")
-dat[ , Sampdate :=ymd(Sampdate)] 
-dat[ , unique(Species)]
-dat[ Pool == "OR(pool 27)", Pool := "Pool 27"]
-dat[ Pool == "Dresden", Pool := "Dresden Island"]
-dat[ , Pool := factor(Pool)]
+dat <- read_csv("../DemographicsData.csv")
+dat <- dat %>%
+    select(Sampdate, Year, Pool, Species, TL, WT) %>%
+    mutate(Sampdate =ymd(Sampdate),
+           Pool = factor(Pool),
+           TLm = TL/1000,
+           TLmL10 = log10(TL/1000),
+           WTkg = WT/1000)
+
+dat2 <- dat %>%
+    filter(!is.na(TL) & !is.na(WT))
+
+dat2 %>%
+    group_by(Pool) %>%
+    summarize(n())
 
 
-dat2 <- dat[ !is.na(TL) & !is.na(WT), ]
-dat2[ , Pool := factor(Pool)]
+dat3 <-
+    dat2 %>%
+    mutate(Species = recode(Species,
+                            BHCP = "Bighead carp",
+                            SVCP = "Silver carp"))
+                            
+RiverKeyIn <- read_csv("./RiverKey.txt") 
 
-dat2[ , TLm  := TL/1000]
-dat2[ , WTkg := WT/1000]
-dat2[ , TLmL10 := log10(TLm)]
-dat2[ , WTkgL10 := log10(WTkg)]
-
-
+    
 ## SVCP data format 
-dat3_SVCP<- dat2[ Species == "SVCP", ]
-dat3_SVCP[ , Pool := factor(Pool)]
-dat3_SVCP[ , PoolID := as.numeric(Pool)]
+SVCP_lw_key <- read_csv("../lengthWeight/SVCP_lw_key.csv")
+    
+dat3_SVCP <-
+    dat3 %>%
+    filter(Species == "Silver carp")
+
+dat3_SVCP %>%
+    filter(is.na(TLmL10))
+
+SVCP_pools <-
+    dat3_SVCP %>%
+    distinct(Pool) %>%
+    pull(Pool) %>%
+    levels()
+
+RiverKeySVCP <- 
+    RiverKeyIn %>%
+    filter(Pool %in% SVCP_pools) %>%
+    full_join(SVCP_lw_key, by = "Pool")
 
 
-groupPredictKey_SVCP <-
-    dat3_SVCP[ , .(PoolID =mean(PoolID)), by = Pool][ order(PoolID),]
-groupPredictKey_SVCP
 
+RiverKeySVCP_pools <-
+    RiverKeySVCP %>%
+    pull(Pool)
 
-xProject_SVCP <- seq(dat2[ , range(TLmL10)][1], dat2[ , range(TLmL10)][2], length.out = 100)
+dat3_SVCP <- 
+    dat3_SVCP %>% 
+    full_join(RiverKeySVCP, by = 'Pool') %>%
+    mutate(Pool = factor(Pool, levels = RiverKeySVCP_pools)) %>%
+    filter(!is.na(TL))
 
+SVCP_project_range <-
+    dat3_SVCP %>%
+    pull(TLmL10) %>%
+    range()
+
+xProject_SVCP <- seq(SVCP_project_range[1], SVCP_project_range[2], length.out = 100)
 xProject_SVCP
 
 ## Load in fittied data
 load("../lengthWeight/lengthWeight3rd_SVCP.RData")
-stanOutsummary_SVCP <- summary(stanOut_SVCP,
+
+stanOutSummary_SVCP <- summary(stanOut_SVCP,
                                probs = c(0.025, 0.1, 0.50, 0.9, 0.975))
 
+## AM HERE EDITING 
 ################
 ## extratc intercepts
-intercepts_SVCP <- data.frame(stanOutsummary_SVCP[[1]][
-    grepl("(beta|gamma)(\\[\\d+,1\\])",
-          rownames(summary(stanOut_SVCP)[[1]])), ])
-intercepts_SVCP$ID = gsub("\\,1]|\\[", "", rownames(intercepts_SVCP))
+rowNames <- rownames(stanOutSummary_SVCP[[1]])
+
+intercepts_SVCP <-
+    stanOutSummary_SVCP[[1]] %>%
+    as.tibble() %>%
+    mutate(RawParameter = rowNames) %>% 
+    filter( grepl("(beta|gamma)(\\[\\d+,1\\])",
+                  RawParameter)) %>%
+    mutate( Parameter = gsub("(gamma|beta)\\[(\\d*),(\\d*)\\]",
+                             "\\1", RawParameter)) %>%
+    mutate( Pool = gsub("(gamma|beta)\\[(\\d*),(\\d*)\\]",
+                        "\\2", RawParameter)) %>%
+    mutate( PoolID = ifelse( Parameter == "gamma",
+                          'hyper-parameter',
+                          Pool) )
+
+intercepts_SVCP %>%
+    select(RawParameter, Parameter, Pool, PoolID)
+
+RiverKeySVCP
 
 groupPredictKey_SVCP[ , PoolID := paste0("beta", PoolID)]
 groupPredictKey_SVCP <- rbind(groupPredictKey_SVCP,

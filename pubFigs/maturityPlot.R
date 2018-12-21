@@ -1,19 +1,18 @@
-library(ggplot2)
+library(tidyverse)
 library(lubridate)
 library(rstan)
-library(data.table)
 
 ## Load and format raw data
-dat <- fread("../DemographicsData.csv")
-dat[ , Sampdate :=ymd(Sampdate)] 
-
-dat2 <- dat[ Maturity != "NA",] 
-dat2[ , Maturity := factor(Maturity)]
-dat2[ , M2 := as.numeric(Maturity) - 1]
-dat2[ , TLm := TL / 1000]
-dat2[ , WTkg := WT/1000]
-dat2[ , Month := month(Sampdate)]
-dat2[ , SpeciesFull := factor(Species, levels = c("BHCP", "SVCP"), labels = c("Bighead carp", "Silver carp"))]
+dat <-
+    read_csv("../DemographicsData.csv") %>%
+    filter(!is.na(Maturity) & !is.na(TL)) %>%
+    mutate(Maturity = factor(Maturity),
+           TLm = TL / 1000,
+           Species = factor(Species)) %>%
+    mutate(Species = recode(Species,
+                            BHCP = "Bighead carp",
+                            SVCP = "Silver carp"),
+           M2 = as.numeric(Maturity) - 1)
 
 ## Exctract and cleanup data
 
@@ -22,107 +21,103 @@ load("../maturity/logisticRegressionSVCP.Rda")
 summaryOutSVCP <- summary(stanOutSVCP)$summary
 parOutSVCP <- data.frame(summary(stanOutSVCP, pars = c("alpha", "beta"), prob = c(0.025, 0.1, 0.5, 0.9, 0.975))$summary)
 parOutSVCP$parameter <- rownames(parOutSVCP)
-parOutSVCPDT <- data.table(parOutSVCP)
-setnames(parOutSVCPDT, "X2.5.", "l95")
-setnames(parOutSVCPDT, "X97.5.", "u95")
-setnames(parOutSVCPDT, "X10.", "l90")
-setnames(parOutSVCPDT, "X90.", "u90")
+parOutSVCPDT <- as.tibble(parOutSVCP)
 
+
+colnames(parOutSVCPDT)[4:8] <- c("L95", "L80", "median", "U80", "U95")
 
 summaryOutSVCP <- summary(stanOutSVCP)$summary
 summary(summaryOutSVCP[, "Rhat"])
 
-parOutSVCP <- data.frame(summary(stanOutSVCP, pars = c("alpha", "beta"), prob = c(0.025, 0.1, 0.5, 0.9, 0.975))$summary)
-parOutSVCP$parameter <- rownames(parOutSVCP)
-parOutSVCPDT <- data.table(parOutSVCP)
-setnames(parOutSVCPDT, "X2.5.", "l95")
-setnames(parOutSVCPDT, "X97.5.", "u95")
-setnames(parOutSVCPDT, "X10.", "l90")
-setnames(parOutSVCPDT, "X90.", "u90")
-parOutSVCPDT
-
 
 ### Predicted distribution
-dataInSVCP <- seq(dat2[ Species == "SVCP", range(TLm)[1]],
-                  dat2[ Species == "SVCP", range(TLm)[2]],
+rangeSVCP <-
+    dat %>%
+    filter(Species == "Silver carp") %>% 
+    pull(TLm) %>%
+    range(.)
+
+dataInSVCP <- seq(rangeSVCP[1],
+                  rangeSVCP[2],
                   by = 0.001)
+
+lenIndexSVCP <-tibble(TLm = dataInSVCP,
+                      index = 1:length(dataInSVCP))
 
 
 predOutSVCP <- data.frame(summary(stanOutSVCP, pars = c("yProject"), prob = c(0.025, 0.1, 0.5, 0.9, 0.975))$summary)
 predOutSVCP$parameter <- rownames(predOutSVCP)
-predOutSVCPDT <- data.table(predOutSVCP)
-setnames(predOutSVCPDT, "X2.5.", "l95")
-setnames(predOutSVCPDT, "X97.5.", "u95")
-setnames(predOutSVCPDT, "X10.", "l90")
-setnames(predOutSVCPDT, "X90.", "u90")
-predOutSVCPDT[ , index := as.numeric(gsub("yProject\\[(\\d{1+})\\]", "\\1", parameter))]
-setkey(predOutSVCPDT, "index")
-dataInSVCPDT <- data.table(length = dataInSVCP, index = 1:length(dataInSVCP))
-setkey(dataInSVCPDT, "index")
-predOutSVCPDT <- dataInSVCPDT[predOutSVCPDT]
 
+predOutSVCPDT <- as.tibble(predOutSVCP)
+colnames(predOutSVCPDT)[4:8] <- c("L95", "L80", "median", "U80", "U95")
+predOutSVCPDT <- 
+    predOutSVCPDT %>%
+    mutate(index = as.numeric(gsub("yProject\\[(\\d{1+})\\]", "\\1", parameter))) %>%
+    full_join(lenIndexSVCP, by = 'index') %>%
+    select(parameter, TLm, mean, L95, L80, median, U80, U95)
 
+predOutSVCPDT 
 
 ## BHCP bighead carp
 load("../maturity/logisticRegressionBHCP.Rda")
 summaryOutBHCP <- summary(stanOutBHCP)$summary
 parOutBHCP <- data.frame(summary(stanOutBHCP, pars = c("alpha", "beta"), prob = c(0.025, 0.1, 0.5, 0.9, 0.975))$summary)
 parOutBHCP$parameter <- rownames(parOutBHCP)
-parOutBHCPDT <- data.table(parOutBHCP)
-setnames(parOutBHCPDT, "X2.5.", "l95")
-setnames(parOutBHCPDT, "X97.5.", "u95")
-setnames(parOutBHCPDT, "X10.", "l90")
-setnames(parOutBHCPDT, "X90.", "u90")
+parOutBHCPDT <- as.tibble(parOutBHCP)
 
+
+colnames(parOutBHCPDT)[4:8] <- c("L95", "L80", "median", "U80", "U95")
 
 summaryOutBHCP <- summary(stanOutBHCP)$summary
 summary(summaryOutBHCP[, "Rhat"])
 
-parOutBHCP <- data.frame(summary(stanOutBHCP, pars = c("alpha", "beta"), prob = c(0.025, 0.1, 0.5, 0.9, 0.975))$summary)
-parOutBHCP$parameter <- rownames(parOutBHCP)
-parOutBHCPDT <- data.table(parOutBHCP)
-setnames(parOutBHCPDT, "X2.5.", "l95")
-setnames(parOutBHCPDT, "X97.5.", "u95")
-setnames(parOutBHCPDT, "X10.", "l90")
-setnames(parOutBHCPDT, "X90.", "u90")
-parOutBHCPDT
-
 
 ### Predicted distribution
-dataInBHCP <- seq(dat2[ Species == "BHCP", range(TLm)[1]],
-                  dat2[ Species == "BHCP", range(TLm)[2]],
+rangeBHCP <-
+    dat %>%
+    filter(Species == "Silver carp") %>% 
+    pull(TLm) %>%
+    range(.)
+
+dataInBHCP <- seq(rangeBHCP[1],
+                  rangeBHCP[2],
                   by = 0.001)
+
+lenIndexBHCP <-tibble(TLm = dataInBHCP,
+                      index = 1:length(dataInBHCP))
+
 
 predOutBHCP <- data.frame(summary(stanOutBHCP, pars = c("yProject"), prob = c(0.025, 0.1, 0.5, 0.9, 0.975))$summary)
 predOutBHCP$parameter <- rownames(predOutBHCP)
-predOutBHCPDT <- data.table(predOutBHCP)
-setnames(predOutBHCPDT, "X2.5.", "l95")
-setnames(predOutBHCPDT, "X97.5.", "u95")
-setnames(predOutBHCPDT, "X10.", "l90")
-setnames(predOutBHCPDT, "X90.", "u90")
 
-predOutBHCPDT[ , index := as.numeric(gsub("yProject\\[(\\d+)\\]",
-                                          "\\1", parameter))]
-setkey(predOutBHCPDT, "index")
+predOutBHCPDT <- as.tibble(predOutBHCP)
+colnames(predOutBHCPDT)[4:8] <- c("L95", "L80", "median", "U80", "U95")
+predOutBHCPDT <- 
+    predOutBHCPDT %>%
+    mutate(index = as.numeric(gsub("yProject\\[(\\d{1+})\\]", "\\1", parameter))) %>%
+    full_join(lenIndexBHCP, by = 'index') %>%
+    select(parameter, TLm, mean, L95, L80, median, U80, U95)
 
-dataInBHCPDT <- data.table(length = dataInBHCP, index = 1:length(dataInBHCP))
-setkey(dataInBHCPDT, "index")
-predOutBHCPDT <- dataInBHCPDT[predOutBHCPDT]
+predOutBHCPDT 
 
 ##########
 ## Merge and Plot together
-parOutSVCPDT[ , Species := "Silver carp"]
-parOutBHCPDT[ , Species := "Bighead carp"]
+parOutSVCPDT <-
+    parOutSVCPDT %>%
+    mutate(Species = "Silver carp")
+
+parOutBHCPDT <- 
+    parOutBHCPDT %>%
+    mutate(Species = "Bighead carp")
 
 parOut <- rbind(parOutBHCPDT, parOutSVCPDT)
 parOut
 
 
-
 ## Plot results
 parEst <- ggplot(parOut, aes(x = Species, y = mean)) +
-    geom_linerange(aes(ymin = l95, ymax = u95)) +
-    geom_linerange(aes(ymin = l90, ymax = u90), size = 1.25) +
+    geom_linerange(aes(ymin = L95, ymax = U95)) +
+    geom_linerange(aes(ymin = L80, ymax = U80), size = 1.25) +
     geom_point(size = 1.6) +
     coord_flip() +
     facet_grid( . ~ parameter, scales = "free") + 
@@ -133,22 +128,26 @@ parEst
 
 ggsave("parEst.pdf", parEst, width = 6, height = 3)
 
-predOutSVCPDT[ , SpeciesFull := "Silver carp"]
-predOutBHCPDT[ , SpeciesFull := "Bighead carp"]
+predOutSVCPDT <- 
+    predOutSVCPDT %>%
+    mutate(Species = "Silver carp")
+
+predOutBHCPDT <- 
+    predOutBHCPDT %>%
+    mutate(Species = "Bighead carp")
 
 predOut <- rbind(predOutSVCPDT, predOutBHCPDT)
 
-str(predOut)
 predEst <-
-    ggplot(predOut, aes(x = length, y = mean)) +
-    geom_ribbon(aes(ymin = l95, ymax = u95), fill = 'blue', alpha = 0.50)+ 
-    geom_ribbon(aes(ymin = l90, ymax = u90), fill = 'blue', alpha = 0.50) +
-    geom_line(size = 1.6) +
+    ggplot(predOut, aes(x = TLm, y = mean)) +
+    facet_grid( . ~ Species) +
+    geom_ribbon(aes(ymin = L95, ymax = U95), fill = 'blue', alpha = 0.50) + 
+    geom_ribbon(aes(ymin = L80, ymax = U80), fill = 'blue', alpha = 0.50) + 
+    geom_line(size = 1.6) + 
     ylab("Probability of being mature") +
     xlab("Length (m)") +
     theme_minimal()  +
-    facet_grid( . ~ SpeciesFull) +
-    geom_jitter(data = dat2[ Species %in% c("BHCP", "SVCP"), ], aes(x = TLm, y = M2),
+     geom_jitter(data = dat, aes(x = TLm, y = M2),
                 width = 0, height = 0.005)
 
 predEst
@@ -156,4 +155,4 @@ ggsave("maturityPred.pdf", predEst, width = 8, height = 4)
 
 
 ## save outputs
-fwrite(x = parOut, file = "maturityCoefAll.csv")
+write_csv(x = parOut, path = "maturityCoefAll.csv")
