@@ -60,10 +60,12 @@ stanData_SVCP <- list(
 )
 
 ## ## Only run if needed
-stanOut_SVCP <- stan(file = "lengthWeight.stan",
-                     data = stanData_SVCP,
-                     chains = 4, iter = 6000,
-                     control = list(adapt_delta = 0.8))
+lw_model_SVCP <- stan_model(file = "lengthWeight.stan")
+
+stanOut_SVCP <- sampling(lw_model_SVCP,
+                         data = stanData_SVCP,
+                         chains = 4, iter = 6000,
+                         control = list(adapt_delta = 0.8))
 
 save(stanOut_SVCP, file = "lengthWeight3rd_SVCP.RData")
 gc()
@@ -112,8 +114,11 @@ stanData_BHCP <- list(
 )
 
 ## ## Only run if needed
-stanOut_BHCP <- stan(file = "lengthWeight.stan",
-                     data = stanData_BHCP,
-                     chains = 4, iter = 6000,
-                     control = list(adapt_delta = 0.8))
+lw_model_BHCP <- stan_model(file = "lengthWeight.stan")
+
+stanOut_BHCP <- sampling(lw_model_BHCP,
+                         data = stanData_BHCP,
+                         chains = 4, iter = 6000,
+                         control = list(adapt_delta = 0.8))
+
 save(stanOut_BHCP, file = "lengthWeight3rd_BHCP.RData")
