@@ -14,6 +14,7 @@ dat <-
                             SVCP = "Silver carp"),
            M2 = as.numeric(Maturity) - 1)
 
+           
 ## Exctract and cleanup data
 
 ## SVCP Silver carp
@@ -120,7 +121,8 @@ parEst <- ggplot(parOut, aes(x = Species, y = mean)) +
     geom_linerange(aes(ymin = L80, ymax = U80), size = 1.25) +
     geom_point(size = 1.6) +
     coord_flip() +
-    facet_grid( . ~ parameter, scales = "free") + 
+    facet_grid( . ~ parameter, scales = "fixed",
+               labeller = label_parsed) + 
     ylab("Parameter estimate") +
     xlab("Species") +
     theme_minimal()

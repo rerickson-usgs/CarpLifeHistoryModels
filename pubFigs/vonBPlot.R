@@ -88,6 +88,7 @@ PoolKeyTable_BHCP <-
 RiverKey <- read_csv("RiverKey.txt") %>%
     mutate( Pool := factor(Pool, levels = Pool))
 
+
 PoolKeyTable_BHCP <-
     RiverKey %>%
     full_join(PoolKeyTable_BHCP) %>%
@@ -114,6 +115,8 @@ BHCP_coef %>% print(n = Inf)
 BHCP_coef <- BHCP_coef %>% full_join(PoolKeyTable_BHCP, by = "PoolID") 
 BHCP_coef
 
+colnames(BHCP_coef)
+colnames(SVCP_coef)
 
 ## Merge together coefficients
 BHCP_coef <- BHCP_coef %>%
@@ -123,6 +126,8 @@ SVCP_coef <- SVCP_coef %>%
 
 
 coefAll <- rbind(BHCP_coef, SVCP_coef)  %>% select( -"x", -"y")
+
+
 coefAll <- coefAll %>%
     mutate(Parameter = gsub("(Linf|K|M)(\\[)(\\d+)(\\])", "\\1", Parameter))
 coefAll <- coefAll %>%
@@ -312,41 +317,48 @@ hyperAndSiteProjection <-
 
 ## Reorder dat so both can be
 
-PoolOrder <- 
-    PoolKeyTable_SVCP %>%
-    filter(!grepl("_bar", Pool)) %>%
-    pull(Pool)
+## PoolOrder <- 
+##     PoolKeyTable_SVCP %>%
+##     filter(!grepl("_bar", Pool)) %>%
+##     pull(Pool)
 
 
-RiverKey <-
+
+## Get dat2 Pools
+dat2_pools <- dat2 %>% pull(Pool) %>% unique()
+dat2_pools
+
+## Merge two 
+RiverKey_use <-
     read_csv("RiverKey.txt") %>%
     filter(!grepl("Hyper-parameter", River)) %>%
-    mutate(Pool = factor(Pool, levels = Pool))
-
-RiverKey %>%
-    pull(Pool) %>%
-    levels(.)
+    filter(Pool %in% dat2_pools)
 
 dat3 <-
-    dat2 %>% 
-    mutate(Pool = factor(Pool, levels = PoolOrder)) %>%
-    full_join(RiverKey, by = "Pool")  %>%
+    dat2 %>%
+    mutate(Pool = as.character(Pool)) %>%
+    full_join(RiverKey_use, by = "Pool") %>% 
     filter(!is.na(Age3)) %>%
     mutate(Species = recode(Species,
                             SVCP = "Silver carp",
-                            BHCP = "Bighead carp"))
+                            BHCP = "Bighead carp"),
+           Pool_plot = factor(Pool, levels = RiverKey_use$Pool))
+
 
 ## extract out site projections
 siteProjection <-
     hyperAndSiteProjection %>%
+    mutate(Pool_plot = factor(Pool, levels = RiverKey_use$Pool)) %>%
     filter(grepl("site", Parameter))
+    
 
+                                      
 dataVBplot <-
     ggplot() + 
     geom_point(data = dat3, aes(x = Age3, y = TLm), alpha = 0.1) + 
     xlab("Age (years)") +
     ylab("Length (m)") + theme_minimal() +
-    facet_grid( Species ~ River + Pool) +
+    facet_grid( Species ~ River + Pool_plot) +
     geom_line(data = siteProjection ,
               aes(x = age - 1, y = mean, color = River)) + 
     geom_ribbon(data = siteProjection,
@@ -439,8 +451,9 @@ hyperPlot <-
     geom_ribbon(aes(x = age -1, ymin = L80, ymax = U80), fill = 'grey50',
                 alpha = 0.25) + 
     geom_line(data = siteProjection,
-              aes(x = age -1, y = mean, group = Pool, color = Pool),
+              aes(x = age -1, y = mean, group = Pool, color = River),
               size = 1.1) +
+    scale_color_manual(values = c("red", "blue", "gold")) + 
     xlab("Age (years)") +
     ylab("Length (m)") + theme_minimal() + 
     scale_x_continuous(breaks = seq(0, max(ageProjection), by = 2)) + 
@@ -449,12 +462,12 @@ hyperPlot <-
 print(hyperPlot)
 
 
-hyperPlotWithLabel <-hyperPlot +
-    geom_text(data = poolLabelPlot, aes(x = age, y = y, label = Pool, color = Pool),
+hyperPlotWithLabel <-
+    hyperPlot +
+    geom_text(data = poolLabelPlot, aes(x = age, y = y, label = Pool, color = River),
               hjust = "outward") + 
     xlim(c(0, 30))   +
-    theme(legend.position="none") +
-    scale_color_hue(l=58)
+    theme(legend.position="none") 
 
 print(hyperPlotWithLabel)
 ggsave("hyperPlotNot0.pdf", hyperPlotWithLabel, width = 8, height = 6)
@@ -527,16 +540,22 @@ dat3a <-
     dat2a %>%
     full_join(RiverKey, by = 'Pool') %>%
     filter(!is.na(River) & !is.na(Species))
-                                                  
+
+
+dat3a <- 
+    dat3a %>%
+    mutate(Pool_plot = factor(Pool, levels = RiverKey$Pool))
+
 lengthPlot <-
-    ggplot(dat3a, aes(x = Pool, y = TLm)) +
+    ggplot(dat3a, aes(x = Pool_plot, y = TLm)) +
     geom_violin(draw_quantiles = .5) +
     geom_point(size = 0.4) + 
     facet_grid( River ~ Species, scales = 'free_y') +
     coord_flip() +
     theme_bw() +
     theme(strip.background = element_blank()) + 
-    ylab("Length (m)") 
+    ylab("Length (m)") +
+    xlab("Pool")
 print(lengthPlot)
 ggsave("lengthPlot.pdf", width = 6, height = 6)
 
@@ -545,14 +564,15 @@ datAge <-
     dat3a %>%
     filter(!is.na(Age3))
 
-agePlot <- ggplot(datAge, aes(x = Pool, y = Age3)) +
+agePlot <- ggplot(datAge, aes(x = Pool_plot, y = Age3)) +
     geom_violin(draw_quantiles = .5) +
     geom_point(size = 0.4) + 
     facet_grid( River ~ Species, scales = 'free_y') +
     coord_flip() +
     theme_bw() +
     theme(strip.background = element_blank()) + 
-    ylab("Age (years)") 
+    ylab("Age (years)") +
+    xlab("Pool")
 print(agePlot)
 
 ggsave("AgePlot.pdf", width = 6, height = 6)
