@@ -142,6 +142,11 @@ colnames(coefAll)[2:6] <- c("L95", "L80", "median", "U80", "U95")
 ## Save coef estimates
 write_csv(coefAll, "coefAll_vonB.csv")
 
+
+
+
+
+
 ## Reorder factors for plotting 
 RiverKey <- read_csv("RiverKey.txt") %>%
     filter(Pool != "Hyper-parameter") %>%
@@ -182,13 +187,14 @@ coefAllGG <-
     geom_linerange(aes(ymin = L95, ymax = U95), size = 0.5)  +
     coord_flip() +
     theme_minimal() +
-    facet_grid( Species ~ ParameterPlot,
+    facet_grid( . ~ Species + ParameterPlot,
                labeller = labeller(ParameterPlot = label_parsed),
                scales = "free") + 
     ylab("Estimate") +
     scale_color_manual(values = c("black", "blue", "seagreen", "orange")) 
 print(coefAllGG)
 
+ggsave("vonb_b_coefAllGG.pdf", coefAllGG, width = 12, height = 6)
 
 
 
@@ -544,7 +550,7 @@ dat3a <-
 
 dat3a <- 
     dat3a %>%
-    mutate(Pool_plot = factor(Pool, levels = RiverKey$Pool))
+    mutate(Pool_plot = factor(Pool, levels = rev(RiverKey$Pool)))
 
 lengthPlot <-
     ggplot(dat3a, aes(x = Pool_plot, y = TLm)) +
