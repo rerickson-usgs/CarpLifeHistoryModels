@@ -1,20 +1,20 @@
 ## Load required libraires
 library(data.table) # used for data manipulation
 library(lubridate) # used to format date
-library(ggplot2) # used for plotting 
+library(ggplot2) # used for plotting
 library(rstan) # used to fit Bayesian model
 options(mc.cores = parallel::detectCores())
 
 ## Read in a format data
 dat <- fread("../DemographicsData.csv")
 
-dat[ , Sampdate :=ymd(Sampdate)] 
+dat[ , Sampdate :=ymd(Sampdate)]
 
 
 dat[ , unique(Species)]
 dat[ , unique(Pool)]
-dat[ Pool == "OR(pool 27)", Pool := "Pool 27"]
-dat[ Pool == "Dresden", Pool := "Dresden Island"]
+## dat[ Pool == "OR(pool 27)", Pool := "Pool 27"]
+## dat[ Pool == "Dresden", Pool := "Dresden Island"]
 
 ## Explore data with plots and do some manipulation
 ## ggplot(data  = dat[Species %in% c( "SVCP", "BHCP"), ],
@@ -25,24 +25,25 @@ dat[ Pool == "Dresden", Pool := "Dresden Island"]
 ##     theme_minimal() +
 ##     ylab("Weight") +
 ##     xlab("Total length") +
-##     scale_y_log10() + 
+##     scale_y_log10() +
 ##     scale_x_log10()
-
 
 ## Plot by pools
 dat2 <- dat[ !is.na(TL) & !is.na(WT), ]
 dat2[ , PoolID := as.numeric(Pool)]
-dat2[ , .N, by = Pool]
+dat2[ , .N, by = .(Pool, Gear)]
 
 ## dat2[ , mean(WT, na.rm = TRUE), by = .(Pool)]
 
-## ggplot(dat2[ Species %in% c( "SVCP", "BHCP"), ], aes(x = TL/1000, y = WT/1000)) +
-##     geom_point(alpha = 0.25) +
-##     facet_grid( Species~Pool) +
-##     xlab("Total length (m)") +
-##     ylab("Weight (kg)") + theme_minimal()+
-##     scale_y_log10() +
-##     scale_x_log10()
+ggplot(dat2[ Species %in% c( "SVCP", "BHCP"), ],
+       aes(x = TL/1000, y = WT/1000,
+           color = Gear)) +
+    geom_point(alpha = 0.25) +
+    facet_grid( Species~Pool) +
+    xlab("Total length (m)") +
+    ylab("Weight (kg)") + theme_minimal()+
+    scale_y_log10() +
+    scale_x_log10()
 
 
 ## dat2[ Species %in% c( "SVCP", "BHCP"), .N, by = .(Species, Pool)][ order(N, decreasing = TRUE),]
@@ -51,7 +52,7 @@ dat2[ , .N, by = Pool]
 
 ## dat2[ Species == "SVCP", .N, by = Pool][ order(N, decreasing = TRUE), ]
 
-dat3_SVCP<- dat2[ Species == "SVCP", ]
+dat3_SVCP <- dat2[ Species == "SVCP", ]
 ## dat3_SVCP[ ,summary(Pool)]
 
 
@@ -69,12 +70,12 @@ dat3_SVCP[ , WTkg := WT/1000]
 dat3_SVCP[ , Pool := factor(Pool)]
 dat3_SVCP[ , PoolID := as.numeric(Pool)]
 
-## Log10 transorm data and center it 
+## Log10 transorm data and center it
 dat3_SVCP[ , TLmL10 := log10(TLm) - mean(log10(TLm))]
 dat3_SVCP[ , WTkgL10 := log10(WTkg)]
 
 ## build simple length-weight model
-## with hardcoded regression 
+## with hardcoded regression
 s1_SVCP <- list(
     N  = dim(dat3_SVCP)[1],
     y  = dat3_SVCP[ , WTkgL10],
@@ -124,16 +125,16 @@ u_SVCP  = matrix(rep(1, length(dat3_SVCP[, unique(PoolID)])), ncol = 1)
 xProject_SVCP_raw <- seq(0.001, 1.5, length.out = 100)
 xProject_SVCP <- log10(xProject_SVCP_raw)
 
-## xProject_SVCP                           
+## xProject_SVCP
 
 stanData_SVCP <- list(
     N  = dim(dat3_SVCP)[1], # Num obs
-    J  = length(dat3_SVCP[, unique(PoolID)]), # num groups 
-    L  = 1, # num group predictors 
-    y  = dat3_SVCP[ , WTkg], # observations 
-    jj = dat3_SVCP[ , PoolID], # groups for each indivdual 
-    x  = x_SVCP, # individual predictor matrix 
-    u  = u_SVCP, # group predictors 
+    J  = length(dat3_SVCP[, unique(PoolID)]), # num groups
+    L  = 1, # num group predictors
+    y  = dat3_SVCP[ , WTkg], # observations
+    jj = dat3_SVCP[ , PoolID], # groups for each indivdual
+    x  = x_SVCP, # individual predictor matrix
+    u  = u_SVCP, # group predictors
     K  = ncol(x_SVCP), # num individual predictors
     xProject = xProject_SVCP,
     nProject = length(xProject_SVCP)
@@ -199,7 +200,7 @@ ggIntercept_SVCP <-
     ggplot(interceptsDT_SVCP, aes(x = Pool, y = mean)) +
     geom_point(size = 1.5) +
     geom_linerange( aes(ymin = l95, ymax = u95)) +
-    geom_linerange( aes(ymin = l80, ymax = u80), size = 1.2) + 
+    geom_linerange( aes(ymin = l80, ymax = u80), size = 1.2) +
     coord_flip() +
     xlab("Pool") +
     ylab(expression("Intercept estimate ("*log[10](weight)*")")) +
@@ -245,7 +246,7 @@ ggSlope_SVCP <-
     ggplot(slopesDT_SVCP, aes(x = Pool, y = mean)) +
     geom_point(size = 1.5) +
     geom_linerange( aes(ymin = l95, ymax = u95)) +
-    geom_linerange( aes(ymin = l80, ymax = u80), size = 1.2) + 
+    geom_linerange( aes(ymin = l80, ymax = u80), size = 1.2) +
     coord_flip() +
     xlab("Pool") +
     ylab(expression(atop("Length-weight slope",
@@ -255,7 +256,7 @@ ggSlope_SVCP <-
 ## ggSlope_SVCP
 ggsave("slope_SVCP.pdf", ggSlope_SVCP, width = 4, height = 6)
 
-## plot projections 
+## plot projections
 siteProjections_SVCP <-
     data.frame(
         stanOutsummary_SVCP[[1]][grepl("yProject",
@@ -353,7 +354,7 @@ ggHyper_SVCP <-
               color = 'black', size = 1)
 
 ## ggHyper_SVCP
-ggsave("lengthWeightHyper_SVCP.pdf", ggHyper_SVCP, width = 6, height = 4) 
+ggsave("lengthWeightHyper_SVCP.pdf", ggHyper_SVCP, width = 6, height = 4)
 
 
 ## bighead carp model
@@ -375,12 +376,12 @@ dat3_BHCP[ , WTkg := WT/1000]
 dat3_BHCP[ , Pool := factor(Pool)]
 dat3_BHCP[ , PoolID := as.numeric(Pool)]
 
-## Log10 transorm data and center it 
+## Log10 transorm data and center it
 dat3_BHCP[ , TLmL10 := log10(TLm) - mean(log10(TLm))]
 dat3_BHCP[ , WTkgL10 := log10(WTkg)]
 
 ## build simple length-weight model
-## with hardcoded regression 
+## with hardcoded regression
 ## s1_BHCP <- list(
 ##     N  = dim(dat3_BHCP)[1],
 ##     y  = dat3_BHCP[ , WTkgL10],
@@ -435,12 +436,12 @@ xProject_BHCP <- log10(xProject_BHCP_raw)
 
 stanData_BHCP <- list(
     N  = dim(dat3_BHCP)[1], # Num obs
-    J  = length(dat3_BHCP[, unique(PoolID)]), # num groups 
-    L  = 1, # num group predictors 
-    y  = dat3_BHCP[ , WTkgL10], # observations 
-    jj = dat3_BHCP[ , PoolID], # groups for each indivdual 
-    x  = x_BHCP, # individual predictor matrix 
-    u  = u_BHCP, # group predictors 
+    J  = length(dat3_BHCP[, unique(PoolID)]), # num groups
+    L  = 1, # num group predictors
+    y  = dat3_BHCP[ , WTkgL10], # observations
+    jj = dat3_BHCP[ , PoolID], # groups for each indivdual
+    x  = x_BHCP, # individual predictor matrix
+    u  = u_BHCP, # group predictors
     K  = ncol(x_BHCP), # num individual predictors
     xProject = xProject_BHCP,
     nProject = length(xProject_BHCP)
@@ -507,7 +508,7 @@ ggIntercept_BHCP <-
     ggplot(interceptsDT_BHCP, aes(x = Pool, y = mean)) +
     geom_point(size = 1.5) +
     geom_linerange( aes(ymin = l95, ymax = u95)) +
-    geom_linerange( aes(ymin = l80, ymax = u80), size = 1.2) + 
+    geom_linerange( aes(ymin = l80, ymax = u80), size = 1.2) +
     coord_flip() +
     xlab("Pool") +
     ylab(expression("Intercept estimate ("*log[10](weight)*")"))  +
@@ -553,7 +554,7 @@ ggSlope_BHCP <-
     ggplot(slopesDT_BHCP, aes(x = Pool, y = mean)) +
     geom_point(size = 1.5) +
     geom_linerange( aes(ymin = l95, ymax = u95)) +
-    geom_linerange( aes(ymin = l80, ymax = u80), size = 1.2) + 
+    geom_linerange( aes(ymin = l80, ymax = u80), size = 1.2) +
     coord_flip() +
     xlab("Pool") +
     ylab(expression(atop("Length-weight slope",
@@ -563,7 +564,7 @@ ggSlope_BHCP <-
 ## ggSlope_BHCP
 ggsave("slope_BHCP.pdf", ggSlope_BHCP, width = 4, height = 6)
 
-## plot projections 
+## plot projections
 siteProjections_BHCP <-
     data.frame(
         stanOutsummary_BHCP[[1]][grepl("yProject",
@@ -654,7 +655,7 @@ ggHyper_BHCP <-
     ylab(expression(log[10]*"(weight kg)")) +
     xlab(expression(log[10]*"(length m)")) +
     theme_minimal() +
-    scale_color_hue(l=40) + 
+    scale_color_hue(l=40) +
     geom_ribbon(data = yHyperDT_BHCP,
                 aes(x = length, ymin = l95, ymax = u95),
                 fill = 'red', alpha = 0.75) +
@@ -663,5 +664,5 @@ ggHyper_BHCP <-
               color = 'black', size = 1)
 
 ## ggHyper_BHCP
-ggsave("lengthWeightHyper_BHCP.pdf", ggHyper_BHCP, width = 6, height = 4) 
+ggsave("lengthWeightHyper_BHCP.pdf", ggHyper_BHCP, width = 6, height = 4)
 

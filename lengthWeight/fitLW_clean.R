@@ -1,14 +1,14 @@
 ## Load required libraires
 library(data.table) # used for data manipulation
 library(lubridate) # used to format date
-library(ggplot2) # used for plotting 
+library(ggplot2) # used for plotting
 library(rstan) # used to fit Bayesian model
 options(mc.cores = parallel::detectCores())
 
 ## Read in a format data
 dat <- fread("../DemographicsData.csv")
 
-dat[ , Sampdate :=ymd(Sampdate)] 
+dat[ , Sampdate :=ymd(Sampdate)]
 dat[ , unique(Species)]
 dat[ , unique(Pool)]
 
@@ -45,15 +45,15 @@ u_SVCP  = matrix(rep(1, length(dat3_SVCP[, unique(PoolID)])), ncol = 1)
 
 xProject_SVCP <- seq(dat2[ , range(TLmL10)][1], dat2[ , range(TLmL10)][2], length.out = 100)
 
-## xProject_SVCP                           
+## xProject_SVCP
 stanData_SVCP <- list(
     N  = dim(dat3_SVCP)[1], # Num obs
-    J  = length(dat3_SVCP[, unique(PoolID)]), # num groups 
-    L  = 1, # num group predictors 
-    y  = dat3_SVCP[ , WTkgL10], # observations 
-    jj = dat3_SVCP[ , PoolID], # groups for each indivdual 
-    x  = x_SVCP, # individual predictor matrix 
-    u  = u_SVCP, # group predictors 
+    J  = length(dat3_SVCP[, unique(PoolID)]), # num groups
+    L  = 1, # num group predictors
+    y  = dat3_SVCP[ , WTkgL10], # observations
+    jj = dat3_SVCP[ , PoolID], # groups for each indivdual
+    x  = x_SVCP, # individual predictor matrix
+    u  = u_SVCP, # group predictors
     K  = ncol(x_SVCP), # num individual predictors
     xProject = xProject_SVCP,
     nProject = length(xProject_SVCP)
@@ -102,12 +102,12 @@ xProject_BHCP <-xProject_SVCP
 
 stanData_BHCP <- list(
     N  = dim(dat3_BHCP)[1], # Num obs
-    J  = length(dat3_BHCP[, unique(PoolID)]), # num groups 
-    L  = 1, # num group predictors 
-    y  = dat3_BHCP[ , WTkgL10], # observations 
-    jj = dat3_BHCP[ , PoolID], # groups for each indivdual 
-    x  = x_BHCP, # individual predictor matrix 
-    u  = u_BHCP, # group predictors 
+    J  = length(dat3_BHCP[, unique(PoolID)]), # num groups
+    L  = 1, # num group predictors
+    y  = dat3_BHCP[ , WTkgL10], # observations
+    jj = dat3_BHCP[ , PoolID], # groups for each indivdual
+    x  = x_BHCP, # individual predictor matrix
+    u  = u_BHCP, # group predictors
     K  = ncol(x_BHCP), # num individual predictors
     xProject = xProject_BHCP,
     nProject = length(xProject_BHCP)
