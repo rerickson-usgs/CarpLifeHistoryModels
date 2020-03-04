@@ -7,7 +7,7 @@ library(scales)
 
 ## Von B
 dat <- fread("../DemographicsData.csv")
-dat[ , Sampdate :=ymd(Sampdate)] 
+dat[ , Sampdate :=ymd(Sampdate)]
 dat[ , Pool := factor(Pool)]
 
 dat2 <- dat[ !is.na(TL) & !is.na(Age), ]
@@ -32,8 +32,8 @@ vonBtable
 ## maturity
 ## Load and format raw data
 dat <- fread("../DemographicsData.csv")
-dat[ , Sampdate :=ymd(Sampdate)] 
-dat2 <- dat[ Maturity != "NA",] 
+dat[ , Sampdate :=ymd(Sampdate)]
+dat2 <- dat[ Maturity != "NA",]
 dat2[ , Maturity := factor(Maturity)]
 dat2[ , M2 := as.numeric(Maturity) - 1]
 dat2[ , TLm := TL / 1000]
@@ -48,10 +48,10 @@ Mattable <- dat2[ Species %in% c("SVCP", "BHCP"),
                   .N, by = .(Species)]
 Mattable
 
-## length-weight 
+## length-weight
 ## Read in a format data
 dat <- fread("../DemographicsData.csv")
-dat[ , Sampdate :=ymd(Sampdate)] 
+dat[ , Sampdate :=ymd(Sampdate)]
 dat[ , unique(Species)]
 dat[ Pool == "OR(pool 27)", Pool := "Pool 27"]
 dat[ Pool == "Dresden", Pool := "Dresden Island"]
@@ -114,7 +114,8 @@ sums[ , PoolPlot := paste0(Pool, " (N = ", N, ")")]
 sums[ , Species := factor(Species)]
 levels(sums$Species) <- c("Bighead carp" , "Silver carp")
 
-sumsPlot <- ggplot(sums, aes(x = Pool, y = N, fill = Species)) + geom_col(position = 'dodge') +
+sumsPlot <-
+    ggplot(sums, aes(x = Pool, y = N, fill = Species)) + geom_col(position = 'dodge') +
     facet_grid( River ~  Model, scales ="free_y") +
     coord_flip() +
     scale_fill_manual(values = c("red", "blue")) +

@@ -1,16 +1,16 @@
 ## Load required librarie
 library(data.table) # used for data manipulation
 library(lubridate) # used to format date
-library(ggplot2) # used for plotting 
+library(ggplot2) # used for plotting
 library(rstan) # used to fit Bayesian model
 ## setup to use multiple cores
 options(mc.cores = parallel::detectCores())
 
 ## Read in a format data
 dat <- fread("../DemographicsData.csv")
-dat[ , Sampdate :=ymd(Sampdate)] 
+dat[ , Sampdate :=ymd(Sampdate)]
 
-dat2 <- dat[ Maturity != "NA",] 
+dat2 <- dat[ Maturity != "NA",]
 dat2[ , Maturity := factor(Maturity)]
 dat2[ , M2 := as.numeric(Maturity) - 1]
 dat2[ , TLm := TL / 1000]
@@ -30,14 +30,14 @@ dat3BHCP <- dat2[ Species == "BHCP", ]
 
 ## Plot by pools
 ggplot(dat2[ Species %in% c( "SVCP", "BHCP"), ], aes(x = TLm, y = M2)) +
-    geom_smooth(method = 'glm',  method.args = list(family = "binomial")) + 
+    geom_smooth(method = 'glm',  method.args = list(family = "binomial")) +
     geom_point(alpha = 0.25) +
     facet_grid( Species~Pool) +
     xlab("Length (m)") +
     ylab("Maturity") + theme_minimal()
 
 ggplot(dat2[ Species %in% c( "SVCP", "BHCP"), ], aes(x = TLm, y = M2)) +
-    geom_smooth(method = 'glm',  method.args = list(family = "binomial")) + 
+    geom_smooth(method = 'glm',  method.args = list(family = "binomial")) +
     geom_point(alpha = 0.25) +
     facet_grid( System ~ Species) +
     xlab("Length (m)") +
@@ -48,7 +48,7 @@ dataInSVCP <- seq(dat3SVCP[, range(TLm)[1]], dat3SVCP[, range(TLm)[2]], by = 0.0
 
 stanDataSVCP <- list(
     N  = dim(dat3SVCP)[1],
-    x = dat3SVCP[ , TLm], 
+    x = dat3SVCP[ , TLm],
     y = dat3SVCP[ , M2],
     xProject = dataInSVCP,
     nProject = length(dataInSVCP)
@@ -110,13 +110,13 @@ predOutSVCPDT <- dataInSVCPDT[predOutSVCPDT]
 
 predEstSVCP <-
     ggplot(predOutSVCPDT, aes(x = length, y = mean)) +
-    geom_ribbon(aes(ymin = l95, ymax = u95), fill = 'blue', alpha = 0.50)+ 
+    geom_ribbon(aes(ymin = l95, ymax = u95), fill = 'blue', alpha = 0.50)+
     geom_ribbon(aes(ymin = l90, ymax = u90), fill = 'blue', alpha = 0.50) +
     geom_line(size = 1.6) +
     ylab("Probability of being mature") +
     xlab("Length (m)") +
     theme_minimal()  +
-    geom_jitter(data = dat3SVCP, aes(x = TLm, y = M2), width = 0, height = 0.005) 
+    geom_jitter(data = dat3SVCP, aes(x = TLm, y = M2), width = 0, height = 0.005)
 predEstSVCP
 ggsave("maturityPredSVCP.pdf", predEstSVCP, width = 6, height = 4)
 
@@ -126,7 +126,7 @@ dataInBHCP <- seq(dat3BHCP[, range(TLm)[1]], dat3BHCP[, range(TLm)[2]], by = 0.0
 
 stanDataBHCP <- list(
     N  = dim(dat3BHCP)[1],
-    x = dat3BHCP[ , TLm], 
+    x = dat3BHCP[ , TLm],
     y = dat3BHCP[ , M2],
     xProject = dataInBHCP,
     nProject = length(dataInBHCP)
@@ -190,12 +190,12 @@ predOutBHCPDT <- dataInBHCPDT[predOutBHCPDT]
 
 predEstBHCP <-
     ggplot(predOutBHCPDT, aes(x = length, y = mean)) +
-    geom_ribbon(aes(ymin = l95, ymax = u95), fill = 'blue', alpha = 0.50)+ 
+    geom_ribbon(aes(ymin = l95, ymax = u95), fill = 'blue', alpha = 0.50)+
     geom_ribbon(aes(ymin = l90, ymax = u90), fill = 'blue', alpha = 0.50) +
     geom_line(size = 1.6) +
     ylab("Probability of being mature") +
     xlab("Length (m)") +
     theme_minimal()  +
-    geom_jitter(data = dat3BHCP, aes(x = TLm, y = M2), width = 0, height = 0.005) 
+    geom_jitter(data = dat3BHCP, aes(x = TLm, y = M2), width = 0, height = 0.005)
 predEstBHCP
 ggsave("maturityPredBHCP.pdf", predEstBHCP, width = 6, height = 4)

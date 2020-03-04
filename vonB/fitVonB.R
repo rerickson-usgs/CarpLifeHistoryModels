@@ -1,13 +1,13 @@
 library(data.table) # used for data manipulation
 library(lubridate) # used to format date
-library(ggplot2) # used for plotting 
+library(ggplot2) # used for plotting
 library(rstan) # used to fit Bayesian model
 options(mc.cores = parallel::detectCores())
 
 ## Read in a format data
 dat <- fread("../DemographicsData.csv")
 
-dat[ , Sampdate :=ymd(Sampdate)] 
+dat[ , Sampdate :=ymd(Sampdate)]
 
 dat[ , unique(Species)]
 
@@ -40,7 +40,7 @@ AvTLbyPool <- ggplot(dat2[ Species %in% c( "SVCP", "BHCP"), ],
     ylab("Length (m)") + theme_minimal()
 
 ## Get data from Stan
-## 
+##
 dat2[ Species == "SVCP", .N, by = Pool][ order(N, decreasing = TRUE), ]
 
 dat3 <- dat2[ Pool %in% c("LaGrange", "Alton", "Peoria",
@@ -70,7 +70,7 @@ ageProjection = seq(0, 20, by = 1)
 stanData <- list(
     nFish  = dim(dat3)[1],
     nSites = length(dat3[, unique(PoolID)]),
-    length = dat3[ , TLm], 
+    length = dat3[ , TLm],
     poolID = dat3[ , PoolID],
     age = dat3[ , Age3],
     hp_tau = 1.5,
@@ -86,7 +86,7 @@ names(stanData)
 
 ## Model takes ~0.5 hrs to run.
 ## the stan function is commented out and the outputs loaded from a saved file
-## unless it needs to be re-run. 
+## unless it needs to be re-run.
 ## stanOutO <- stan(file = "vonBo.stan",
 ##                  data = stanData, chains = 4, iter = 6000,
 ##                  control = list(adapt_delta = 0.8))
@@ -224,7 +224,7 @@ hyperProjection <- copy(stanOutOsummaryDT[ grepl("hyperProjection", Parameter), 
 hyperProjection[ , age := as.numeric(gsub("hyperProjection|\\[|\\]", "", Parameter))]
 hyperProjection[ , Pool := "Across pools"]
 
-## Extract out site projections 
+## Extract out site projections
 siteProjections <- copy(stanOutOsummaryDT[ grepl("siteProjection", Parameter)])
 siteProjections[ , PoolID :=  gsub("(siteProjections\\[)(\\d),(\\d{1,2})\\]", "\\2", Parameter)]
 siteProjections[ , age :=  as.numeric(gsub("(siteProjections\\[)(\\d),(\\d{1,2})\\]", "\\3", Parameter))]
@@ -252,12 +252,12 @@ siteProjections[ , Pool := factor(Pool)]
 siteProjections[ , Pool := factor(Pool, levels = levels(Pool)[c(5, 6, 1, 2, 4, 3)])]
 
 
-dataVBplot <- ggplot() + 
+dataVBplot <- ggplot() +
     geom_point(data = dat3, aes(x = Age3, y = TLm), alpha = 0.25) +
     xlab("Age (years)") +
-    ylab("Length (m)") + theme_minimal() + 
+    ylab("Length (m)") + theme_minimal() +
     geom_line(data = siteProjections[  age < 13, ],
-              aes(x = age, y = mean), color = 'blue')   + 
+              aes(x = age, y = mean), color = 'blue')   +
     geom_ribbon(data = siteProjections[  age < 13, ],
                 aes(x = age, ymin = L80, ymax = U80), fill = 'blue',
                 alpha = 0.25)  +
@@ -273,17 +273,17 @@ hyperPlot <-
     ggplot(data = hyperProjection[ age < 13, ], aes(x = age, y = mean)) +
     geom_line(color = 'black', size = 1.3) +
     geom_ribbon(aes(x = age, ymin = L95, ymax = U95), fill = 'grey50',
-                alpha = 0.25) + 
+                alpha = 0.25) +
     geom_ribbon(aes(x = age, ymin = L80, ymax = U80), fill = 'grey50',
                 alpha = 0.25) +
     geom_line(data = siteProjections[ age < 13, ],
               aes(x = age, y = mean, color = Pool),
               size = 1.1) +
     xlab("Age (years)") +
-    ylab("Length (m)") + theme_minimal() + 
+    ylab("Length (m)") + theme_minimal() +
     scale_x_continuous(breaks = ageProjection) +
     scale_color_manual( values = c("red", "blue", "seagreen",
-                                   "orange", "skyblue", "navyblue")) 
+                                   "orange", "skyblue", "navyblue"))
 print(hyperPlot)
 ggsave("hyperPlot.pdf", hyperPlot, width = 6, height = 4)
 
