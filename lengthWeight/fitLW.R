@@ -85,4 +85,4 @@ stanOut_silver_sex <-
 save(stanOut_silver_sex, dat3_silver_pool_key, stanData_silver_sex,
      file = "lengthWeight_silver_sex.RData")
 
-print(stanOut_silver, pars = "sex")
+# print(stanOut_silver, pars = "Sex")
