@@ -5,7 +5,7 @@ library(ggplot2) # used for plotting
 library(rstan) # used to fit Bayesian model
 options(mc.cores = parallel::detectCores())
 
-n_iter  <- 10000
+n_iter  <- 2000
 
 ## Read in a format data
 dat <- fread("./data_use.csv")
@@ -33,7 +33,7 @@ dat3_silver[ , WTkgL10 := log10(WTkg)]
 u_silver  = matrix(rep(1, length(dat3_silver[, unique(PoolID)])), ncol = 1)
 
 ## run model with correlated structure
-x_silver  = dat3_silver[ , model.matrix( ~ TLmL10 - 1)]
+x_silver  = dat3_silver[ , model.matrix( ~ TLmL10)]
 head(x_silver)
 
 xProject_silver_raw <- seq(0.001, 1.5, length.out = 100)
@@ -83,7 +83,7 @@ dat3_bighead[ , WTkgL10 := log10(WTkg)]
 u_bighead  = matrix(rep(1, length(dat3_bighead[, unique(PoolID)])), ncol = 1)
 
 ## run model with correlated structure
-x_bighead  = dat3_bighead[ , model.matrix( ~ TLmL10 - 1)]
+x_bighead  = dat3_bighead[ , model.matrix( ~ TLmL10)]
 head(x_bighead)
 
 xProject_bighead_raw <- seq(0.001, 1.5, length.out = 100)
