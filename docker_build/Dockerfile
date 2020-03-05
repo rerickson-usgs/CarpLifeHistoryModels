@@ -2,10 +2,13 @@
 FROM rocker/r-base:latest
 
 ## Install rstan (downloads and builds all dependencies)
-# RUN Rscript -e 'install.packages(c("rstan", "devtools", "lubridate"), repo = "http://cran.wustl.edu")'
+RUN Rscript -e 'install.packages(c("rstan", "devtools", "lubridate"), repo = "http://cran.wustl.edu", dependencies = TRUE)'
 
-RUN apt-get update && apt-get install -y --no-install-recommends r-cran-rstan
-RUN Rscript -e 'install.packages(c("lubridate"), repo = "http://cran.wustl.edu")'
+##RUN apt-get update && apt-get install -y --no-install-recommends r-cran-rstan
+RUN apt-get update && apt-get install -y --no-install-recommends r-cran-data.table
+## RUN Rscript -e 'install.packages(c("lubridate"), repo = "http://cran.wustl.edu")'
+
+##RUN apt-get update && apt-get install -y --no-install-recommends r-cran-bh
 
 ## Make R the default
 CMD ["R"]

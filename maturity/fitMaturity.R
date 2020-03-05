@@ -4,13 +4,13 @@ library(lubridate) # used to format date
 library(rstan) # used to fit Bayesian model
 
 n_iter <- 10000
-rstan_options(auto_write = TRUE)
+#rstan_options(auto_write = TRUE)
 ## setup to use multiple cores and other local options
-## options(mc.cores = parallel::detectCores())
+options(mc.cores = parallel::detectCores())
 ## Sys.setenv(LOCAL_CPPFLAGS = '-march=corei7 -mtune=corei7')
 
 ## Read in a format data
-dat <- fread("../Explore_data/data_use.csv")
+dat <- fread("./data_use.csv")
 dat[ , Sampdate :=ymd(Sampdate)]
 
 dat2 <- dat[ !is.na(Maturity) & !is.na(TLm), ]
