@@ -5,7 +5,7 @@ library(ggplot2) # used for plotting
 library(rstan) # used to fit Bayesian model
 options(mc.cores = parallel::detectCores())
 
-n_iter  <- 200
+n_iter  <- 500
 
 ## Read in a format data
 dat <- fread("./data_use.csv")
@@ -85,4 +85,4 @@ stanOut_silver_sex <-
 save(stanOut_silver_sex, dat3_silver_pool_key, stanData_silver_sex,
      file = "lengthWeight_silver_sex.RData")
 
-print(stanOut_silver, pars = "sex")
+# print(stanOut_silver, pars = "Sex")
