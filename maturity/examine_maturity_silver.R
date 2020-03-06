@@ -45,7 +45,7 @@ parOut_silver$parameter <- rownames(parOut_silver)
 parOut_silverDT <- data.table(parOut_silver)
 setnames(parOut_silverDT, "X2.5.", "l95")
 setnames(parOut_silverDT, "X97.5.", "u95")
-setnames(parOut_silverDT, "X10.", "l90")
+setnames(parOut_silverDT, "X10.", "l80")
 setnames(parOut_silverDT, "X90.", "u90")
 
 parOut_silverDT[ , par_num := gsub("alpha|beta|\\[|\\]|_", "", parameter)]
@@ -68,7 +68,7 @@ parOut_silverDT
 parEst_silver <-
     ggplot(parOut_silverDT, aes(x = pool_names, y = mean)) +
     geom_linerange(aes(ymin = l95, ymax = u95)) +
-    geom_linerange(aes(ymin = l90, ymax = u90), size = 1.25) +
+    geom_linerange(aes(ymin = l80, ymax = u90), size = 1.25) +
     geom_point(size = 1.6) +
     coord_flip() +
     ylab("Parameter estimate") +
@@ -90,8 +90,8 @@ pool_predictions_silver$parameter  <-
 pool_predictions_silverDT <- data.table(pool_predictions_silver)
 setnames(pool_predictions_silverDT, "X2.5.", "l95")
 setnames(pool_predictions_silverDT, "X97.5.", "u95")
-setnames(pool_predictions_silverDT, "X10.", "l90")
-setnames(pool_predictions_silverDT, "X90.", "u90")
+setnames(pool_predictions_silverDT, "X10.", "l80")
+setnames(pool_predictions_silverDT, "X90.", "u80")
 
 pool_key
 pool_predictions_silverDT
@@ -133,7 +133,7 @@ xy_plot <- xy_plot[pool_key[ !grepl("hyper", pool_names),]]
 predEst_silver <-
     ggplot(pool_predictions_silverDT, aes(x = length, y = mean)) +
     geom_ribbon(aes(ymin = l95, ymax = u95), fill = 'blue', alpha = 0.50)+
-    geom_ribbon(aes(ymin = l90, ymax = u90), fill = 'blue', alpha = 0.50) +
+    geom_ribbon(aes(ymin = l80, ymax = u80), fill = 'blue', alpha = 0.50) +
     geom_line(size = 1.6) +
     ylab("Probability of being mature") +
     xlab("Total length (m)") +
@@ -155,8 +155,8 @@ hyper_predictions_silver$parameter  <-
 hyper_predictions_silverDT <- data.table(hyper_predictions_silver)
 setnames(hyper_predictions_silverDT, "X2.5.", "l95")
 setnames(hyper_predictions_silverDT, "X97.5.", "u95")
-setnames(hyper_predictions_silverDT, "X10.", "l90")
-setnames(hyper_predictions_silverDT, "X90.", "u90")
+setnames(hyper_predictions_silverDT, "X10.", "l80")
+setnames(hyper_predictions_silverDT, "X90.", "u80")
 
 gsub_pat_hyper <- "(y_project_hyper)\\[(\\d+)\\]"
 
@@ -174,7 +174,7 @@ hyper_predictions_silverDT <- hyper_predictions_silverDT[ length_key]
 hyper_Est_silver <-
     ggplot(hyper_predictions_silverDT, aes(x = length, y = mean)) +
     geom_ribbon(aes(ymin = l95, ymax = u95), fill = 'skyblue', alpha = 0.50)+
-    geom_ribbon(aes(ymin = l90, ymax = u90), fill = 'skyblue', alpha = 0.750) +
+    geom_ribbon(aes(ymin = l80, ymax = u80), fill = 'skyblue', alpha = 0.750) +
     geom_line(size = 2.5, color = 'navyblue', linetype = 'dashed') +
     ylab("Probability of being mature") +
     xlab("Total length (m)") +
