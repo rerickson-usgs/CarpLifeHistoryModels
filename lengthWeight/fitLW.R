@@ -5,7 +5,7 @@ library(ggplot2) # used for plotting
 library(rstan) # used to fit Bayesian model
 options(mc.cores = parallel::detectCores())
 
-n_iter  <- 2000
+n_iter <- 10000  
 
 ## Read in a format data
 dat <- fread("./data_use.csv")
