@@ -54,8 +54,8 @@ gg_plot_with_sex_bighead <-
     geom_point(position = position_dodge(width = 0.3)) +
     geom_linerange(position = position_dodge(width = 0.3))
 gg_plot_with_sex_bighead
-ggsave("gg_plot_with_sex_bighead.jpg", gg_plot_with_sex_bighead, width = 6, height = 6)
-ggsave("gg_plot_with_sex_bighead.pdf", gg_plot_with_sex_bighead, width = 6, height = 6)
+ggsave("./figures/gg_plot_with_sex_bighead.jpg", gg_plot_with_sex_bighead, width = 6, height = 6)
+ggsave("./figures/gg_plot_with_sex_bighead.pdf", gg_plot_with_sex_bighead, width = 6, height = 6)
 
 ## stanOutsummary_SVCP[[1]][grepl("beta", rownames(summary(stanOut_SVCP)[[1]])), ]
 ## stanOutsummary_SVCP[[1]][grepl("gamma", rownames(summary(stanOut_SVCP)[[1]])), ]
