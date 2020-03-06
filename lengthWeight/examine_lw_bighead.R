@@ -112,7 +112,7 @@ predictions_bighead_3 <-
 lw_data_bighead  <-
     ggplot(predictions_bighead_3, aes(x = 10^TLmLog10, y = 10^mean)) +
     geom_line(size = 1.6) +
-    facet_grid( ~ Pool + System) +
+    facet_grid( ~ System + Pool) +
     geom_ribbon(aes(ymin = 10^l95, ymax = 10^u95), fill = 'blue', alpha = 0.50)+
     geom_ribbon(aes(ymin = 10^l80, ymax = 10^u80), fill = 'blue', alpha = 0.50) +
     geom_point(data = dat3_bighead, aes(x = TLm, y = WTkg)) +
