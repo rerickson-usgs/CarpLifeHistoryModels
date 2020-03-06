@@ -44,7 +44,7 @@ stanData_silver <- list(
     N  = dim(dat3_silver)[1], # Num obs
     J  = length(dat3_silver[, unique(PoolID)]), # num groups
     L  = 1, # num group predictors
-    y  = dat3_silver[ , WTkg], # observations
+    y  = dat3_silver[ , WTkgL10], # observations
     jj = dat3_silver[ , PoolID], # groups for each indivdual
     x  = x_silver, # individual predictor matrix
     u  = u_silver, # group predictors
