@@ -160,13 +160,13 @@ predictions_silver_3
 
 lw_hyper_silver  <-
     ggplot(hyper_silver, aes(x = 10^TLmLog10, y = 10^mean)) +
-    geom_ribbon(aes(ymin = 10^l95, ymax = 10^u95), fill = 'skyblue', alpha = 0.50) +
-    geom_ribbon(aes(ymin = 10^l80, ymax = 10^u80), fill = 'skyblue', alpha = 0.750) +
+    geom_ribbon(aes(ymin = 10^l95, ymax = 10^u95), fill = 'grey', alpha = 0.50) +
+    geom_ribbon(aes(ymin = 10^l80, ymax = 10^u80), fill = 'grey', alpha = 0.750) +
     theme_bw() +
     geom_line(data = predictions_silver_2,
               aes(x = 10^TLmLog10, y = 10^mean,
                   color = System, group = Pool), size = 1.6) +
-    geom_line(size = 3, color = 'navyblue', linetype = 'solid') +
+    geom_line(size = 3, color = 'navyblue', linetype = 'dashed') +
     theme_bw() +
     scale_color_colorblind("Pool") +
     xlab("Total length (m)") +
