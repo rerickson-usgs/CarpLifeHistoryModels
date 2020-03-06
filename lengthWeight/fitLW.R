@@ -23,7 +23,7 @@ dat3_silver[ , Pool := factor(Pool)]
 dat3_silver[ , PoolID := as.numeric(Pool)]
 
 dat3_silver_pool_key <-
-    dat3_silver[ , .(PoolID = mean(PoolID)), by = Pool]
+    dat3_silver[ , .(PoolID = mean(PoolID)), by = .(Pool, System)]
 
 ## Log10 transorm data and center it
 dat3_silver[ , TLmL10 := log10(TLm)] # may try centering here
