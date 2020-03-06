@@ -91,7 +91,7 @@ stanData_bighead <- list(
     N  = dim(dat3_bighead)[1], # Num obs
     J  = length(dat3_bighead[, unique(PoolID)]), # num groups
     L  = 1, # num group predictors
-    y  = dat3_bighead[ , WTkg], # observations
+    y  = dat3_bighead[ , WTkgL10], # observations
     jj = dat3_bighead[ , PoolID], # groups for each indivdual
     x  = x_bighead, # individual predictor matrix
     u  = u_bighead, # group predictors
