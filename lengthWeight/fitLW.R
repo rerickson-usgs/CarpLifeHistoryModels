@@ -5,21 +5,48 @@ library(ggplot2) # used for plotting
 library(rstan) # used to fit Bayesian model
 options(mc.cores = parallel::detectCores())
 
-n_iter <- 10000  
+n_iter <- 10000
 
 ## Read in a format data
 dat <- fread("./data_use.csv")
 dat[ , Sampdate :=ymd(Sampdate)]
 
+## Order pools
+new_pool_order <-
+    c("Pool 14",
+      "Pool 16",
+      "Pool 17",
+      "Pool 18",
+      "Pool 19",
+      "Pool 20",
+      "Pool 22",
+      "Pool 24",
+      "Pool 26",
+      "Pool 27",
+      "Alton",
+      "LaGrange",
+      "Peoria",
+      "Starved Rock",
+      "Marseilles",
+      "Dresden Island",
+      "JT Myers",
+      "Newburgh",
+      "Cannelton",
+      "McAlpine",
+      "Markland",
+      "Meldahl",
+      "RC Byrd"
+      )
+
+dat[ , Pool := factor(Pool,
+                      levels = new_pool_order
+                      )]
+
 dat2 <- dat[ !is.na(TL) & !is.na(WT), ]
 
 ## Format data for silver carp
 dat3_silver <- dat2[ Species == "Silver", ]
-dat3_silver[ , Pool := factor(Pool)]
-dat3_silver[ , PoolID := as.numeric(Pool)]
-
-## Creat group-level predictors
-dat3_silver[ , Pool := factor(Pool)]
+dat3_silver[ , Pool := droplevels(Pool)]
 dat3_silver[ , PoolID := as.numeric(Pool)]
 
 dat3_silver_pool_key <-
@@ -65,11 +92,7 @@ save(stanOut_silver, dat3_silver_pool_key, stanData_silver,
 
 ## Format data for bighead carp
 dat3_bighead <- dat2[ Species == "Bighead", ]
-dat3_bighead[ , Pool := factor(Pool)]
-dat3_bighead[ , PoolID := as.numeric(Pool)]
-
-## Creat group-level predictors
-dat3_bighead[ , Pool := factor(Pool)]
+dat3_bighead[ , Pool := droplevels(Pool)]
 dat3_bighead[ , PoolID := as.numeric(Pool)]
 
 dat3_bighead_pool_key <-
