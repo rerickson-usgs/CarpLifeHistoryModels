@@ -73,7 +73,7 @@ dat3_bighead[ , Pool := factor(Pool)]
 dat3_bighead[ , PoolID := as.numeric(Pool)]
 
 dat3_bighead_pool_key <-
-    dat3_bighead[ , .(PoolID = mean(PoolID)), by = Pool]
+    dat3_bighead[ , .(PoolID = mean(PoolID)), by = .(System, Pool)]
 
 ## Log10 transorm data and center it
 dat3_bighead[ , TLmL10 := log10(TLm)] # may try centering here
