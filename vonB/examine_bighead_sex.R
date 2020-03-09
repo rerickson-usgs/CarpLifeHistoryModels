@@ -27,7 +27,7 @@ print(stanOutO_bighead_female, pars =c( "K_bar", "Linf_bar"))
 print(stanOutO_bighead_male, pars =c( "K_bar", "Linf_bar"))
 
 plot(stanOutO_bighead_female, pars =c("Linf_bar", "K_bar")) +
-    xlim(c(0.3, 1.1))
+    xlim(c(0.3, 1.3))
 x11()
 plot(stanOutO_bighead_male, pars =c("Linf_bar", "K_bar")) +
-    xlim(c(0.3, 1.1))
+    xlim(c(0.3, 1.3))

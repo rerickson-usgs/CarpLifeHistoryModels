@@ -1,3 +1,9 @@
+library(data.table) # used for data manipulation
+library(lubridate) # used to format date
+library(ggplot2) # used for plotting
+library(rstan) # used to fit Bayesian model
+options(mc.cores = parallel::detectCores())
+
 load("vonBfitNot0_silver_female.RData")
 ls()
 
