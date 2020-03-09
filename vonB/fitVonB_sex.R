@@ -43,7 +43,7 @@ dat2 <- dat[ !is.na(TL) & !is.na(Age), ]
 
 
 ## Silver carp silver analysis
-dat3_silver_male <- dat2[ Species == "Silver" & Sex %in% c("Male", "Unkown"), ]
+dat3_silver_male <- dat2[ Species == "Silver" & Sex %in% c("Male"), ]
 dat3_silver_male[ , Pool := droplevels(Pool)]
 dat3_silver_male[ , PoolID := as.numeric(Pool)]
 ageProjection = seq(0, 20, by = 1)
@@ -79,7 +79,7 @@ save(stanOutO_silver_male,
      file = "vonBfitNot0_silver_male.RData")
 
 ## Silver carp silver analysis
-dat3_silver_female <- dat2[ Species == "Silver" & Sex %in% c("Female", "Unkown"), ]
+dat3_silver_female <- dat2[ Species == "Silver" & Sex %in% c("Female"), ]
 dat3_silver_female[ , Pool := droplevels(Pool)]
 dat3_silver_female[ , PoolID := as.numeric(Pool)]
 ageProjection = seq(0, 20, by = 1)
@@ -116,7 +116,7 @@ save(stanOutO_silver_female,
 
 
 ## Bighead carp bighead analysis
-dat3_bighead_male <- dat2[ Species == "Bighead" & Sex %in% c("Male", "Unkown"), ]
+dat3_bighead_male <- dat2[ Species == "Bighead" & Sex %in% c("Male"), ]
 dat3_bighead_male[ , Pool := droplevels(Pool)]
 dat3_bighead_male[ , PoolID := as.numeric(Pool)]
 ageProjection = seq(0, 20, by = 1)
@@ -152,7 +152,7 @@ save(stanOutO_bighead_male,
      file = "vonBfitNot0_bighead_male.RData")
 
 ## Bighead carp bighead analysis
-dat3_bighead_female <- dat2[ Species == "Bighead" & Sex %in% c("Female", "Unkown"), ]
+dat3_bighead_female <- dat2[ Species == "Bighead" & Sex %in% c("Female"), ]
 dat3_bighead_female[ , Pool := droplevels(Pool)]
 dat3_bighead_female[ , PoolID := as.numeric(Pool)]
 ageProjection = seq(0, 20, by = 1)
