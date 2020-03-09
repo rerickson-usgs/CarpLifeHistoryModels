@@ -1,39 +1,65 @@
 library(data.table) # used for data manipulation
 library(lubridate) # used to format date
-library(ggplot2) # used for plotting 
+library(ggplot2) # used for plotting
 library(rstan) # used to fit Bayesian model
 options(mc.cores = parallel::detectCores())
 
-rerunStan = TRUE
-
 ## Read in a format data
-dat <- fread("../DemographicsData.csv")
-dat[ , Sampdate :=ymd(Sampdate)]
-dat[ , month := month(Sampdate)]
-dat[ is.na(month), month := 5]
+dat <- fread("./data_use.csv")
+
+## Order pools
+new_pool_order <-
+    c("Pool 14",
+      "Pool 16",
+      "Pool 17",
+      "Pool 18",
+      "Pool 19",
+      "Pool 20",
+      "Pool 22",
+      "Pool 24",
+      "Pool 26",
+      "Pool 27",
+      "Alton",
+      "LaGrange",
+      "Peoria",
+      "Starved Rock",
+      "Marseilles",
+      "Dresden Island",
+      "JT Myers",
+      "Newburgh",
+      "Cannelton",
+      "McAlpine",
+      "Markland",
+      "Meldahl",
+      "RC Byrd"
+      )
+
+dat[ , Pool := factor(Pool,
+                      levels = new_pool_order
+                      )]
 
 dat2 <- dat[ !is.na(TL) & !is.na(Age), ]
-dat2[ , Age2 := floor(Age)]
-dat2[ , Age3 := Age2 + (month-5)/12]
-dat2[ , Pool :=factor(Pool)]
-dat2[ , TLm := TL/1000]
 
 
-## Silver carp SVCP analysis
-dat3_SVCP <- dat2[ Species == "SVCP", ] 
-dat3_SVCP[ , Pool := factor(Pool)]
-dat3_SVCP[ , PoolID := as.numeric(Pool)]
+## Silver carp silver analysis
+dat3_silver <- dat2[ Species == "Silver", ]
+
+dat3_silver[ , Pool := droplevels(Pool)]
+dat3_silver[ , PoolID := as.numeric(Pool)]
 
 ageProjection = seq(0, 20, by = 1)
-fwrite(file ="SVCP_vonBkey.csv",
-       x = dat3_SVCP[ , .(PoolID = mean(PoolID)) , by = Pool])
 
-stanData_SVCP <- list(
-    nFish  = dim(dat3_SVCP)[1],
-    nSites = length(dat3_SVCP[, unique(PoolID)]),
-    length = dat3_SVCP[ , TLm], 
-    poolID = dat3_SVCP[ , PoolID],
-    age = dat3_SVCP[ , Age3],
+dat3_silver[ , .(PoolID = mean(PoolID)), by = .(Pool)]
+
+dat3_silver_pool_key <-
+    dat3_silver[ , .(PoolID = mean(PoolID)), by = .(Pool, Pool)]
+
+stanData_silver <- list(
+    nFish  = dim(dat3_silver)[1],
+    nSites = length(dat3_silver[, unique(PoolID)]),
+    length = dat3_silver[ , TLm],
+    poolID = dat3_silver[ , PoolID],
+    age = dat3_silver[ , Age3],
     hp_tau = 1.5,
     hp_sigma = 10,
     hp_omega = 2,
@@ -45,12 +71,12 @@ stanData_SVCP <- list(
 
 ## Model takes ~0.25 hrs to run.
 if(rerunStan){
-    stanOutO_SVCP <- stan(file = "vonBoNot0.stan",
-                          data = stanData_SVCP, chains = 4, iter = 6000,
+    stanOutO_silver <- stan(file = "vonBoNot0.stan",
+                          data = stanData_silver, chains = 4, iter = 6000,
                           control = list(adapt_delta = 0.8))
-    save(stanOutO_SVCP, file = "vonBfitNot0_SVCP.RData")
+    save(stanOutO_silver, file = "vonBfitNot0_silver.RData")
 } else {
-    load("vonBfitNot0_SVCP.RData")
+    load("vonBfitNot0_silver.RData")
 }
 
 ## stanOutO_SVCP
@@ -65,9 +91,9 @@ stanOutOsummary_SVCP[[1]][grepl("Linf", rownames(summary(stanOutO_SVCP)[[1]])),]
 
 plot(stanOutO_SVCP, pars =c("Linf_bar", "K_bar", "Linf"))
 
-## Bighead carp analysis 
+## Bighead carp analysis
 dat3_BHCP <- dat2[ Species == "BHCP", ]
-dat3_BHCP[ , Pool := factor(Pool)]
+dat3_BHCP[ , Pool := droplevels(Pool)]
 dat3_BHCP[ , PoolID := as.numeric(Pool)]
 
 fwrite(file ="BHCP_vonBkey.csv",
@@ -76,7 +102,7 @@ fwrite(file ="BHCP_vonBkey.csv",
 stanData_BHCP <- list(
     nFish  = dim(dat3_BHCP)[1],
     nSites = length(dat3_BHCP[, unique(PoolID)]),
-    length = dat3_BHCP[ , TLm], 
+    length = dat3_BHCP[ , TLm],
     poolID = dat3_BHCP[ , PoolID],
     age = dat3_BHCP[ , Age3],
     hp_tau = 1.5,
@@ -95,11 +121,11 @@ if(rerunStan){
                           control = list(adapt_delta = 0.8))
     save(stanOutO_BHCP, file = "vonBfitNot0_BHCP.RData")
 } else {
-    load("vonBfitNot0_BHCP.RData")                    
+    load("vonBfitNot0_BHCP.RData")
 }
 
 
-stanOutOsummary_BHCP <- 
+stanOutOsummary_BHCP <-
     summary(stanOutO_BHCP, probs = c(0.025, 0.1, 0.50, 0.9, 0.975))
 
 stanOutOsummary_BHCP[[1]][grepl("M", rownames(summary(stanOutO_BHCP)[[1]])), ]
