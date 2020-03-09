@@ -111,19 +111,23 @@ predictions_bighead_3 <-
 
 lw_data_bighead  <-
     ggplot(predictions_bighead_3, aes(x = 10^TLmLog10, y = 10^mean)) +
-    geom_line(size = 1.6) +
-    facet_grid( ~ System + Pool) +
-    geom_ribbon(aes(ymin = 10^l95, ymax = 10^u95), fill = 'blue', alpha = 0.50)+
-    geom_ribbon(aes(ymin = 10^l80, ymax = 10^u80), fill = 'blue', alpha = 0.50) +
-    geom_point(data = dat3_bighead, aes(x = TLm, y = WTkg)) +
+    ## facet_grid( ~ System + Pool) +
+    facet_wrap( System ~ Pool) +
+    ## geom_ribbon(aes(ymin = 10^l95, ymax = 10^u95), fill = 'blue', alpha = 0.50)+
+    ## geom_ribbon(aes(ymin = 10^l80, ymax = 10^u80), fill = 'blue', alpha = 0.50) +
+    geom_point(data = dat3_bighead, aes(x = TLm, y = WTkg), alpha = 1, color = 'navyblue') +
+    geom_ribbon(aes(ymin = 10^l95, ymax = 10^u95, fill = System), alpha = 0.50)+
+    geom_ribbon(aes(ymin = 10^l80, ymax = 10^u80, fill = System),  alpha = 0.50) +
+    geom_line(size = 1.6, aes(color = System)) +
     theme_bw() +
+    scale_color_colorblind() +
     theme(strip.background = element_blank()) +
     ylab("Weight (kg)") +
     xlab("Total length (m)")
 
 print(lw_data_bighead)
-ggsave("./figures/lw_data_bighead.jpg", lw_data_bighead, width = 10, height = 4)
-ggsave("./figures/lw_data_bighead.pdf", lw_data_bighead, width = 10, height = 4)
+ggsave("./figures/lw_data_bighead.jpg", lw_data_bighead, width = 8, height = 6)
+ggsave("./figures/lw_data_bighead.pdf", lw_data_bighead, width = 8, height = 6)
 
 
 ## Extract out and plot hyper predictions
@@ -151,8 +155,8 @@ predictions_bighead_3
 
 lw_hyper_bighead  <-
     ggplot(hyper_bighead, aes(x = 10^TLmLog10, y = 10^mean)) +
-    geom_ribbon(aes(ymin = 10^l95, ymax = 10^u95), fill = 'grey', alpha = 0.50) +
-    geom_ribbon(aes(ymin = 10^l80, ymax = 10^u80), fill = 'grey', alpha = 0.750) +
+    geom_ribbon(aes(ymin = 10^l95, ymax = 10^u95), fill = 'navyblue', alpha = 0.50) +
+    geom_ribbon(aes(ymin = 10^l80, ymax = 10^u80), fill = 'navyblue', alpha = 0.750) +
     theme_bw() +
     geom_line(data = predictions_bighead_2,
               aes(x = 10^TLmLog10, y = 10^mean,
@@ -165,7 +169,6 @@ lw_hyper_bighead  <-
 lw_hyper_bighead
 ggsave("./figures/lw_hyper_bighead.jpg", lw_hyper_bighead, width = 4, height = 4)
 ggsave("./figures/lw_hyper_bighead.pdf", lw_hyper_bighead, width = 4, height = 4)
-k
 
 
 
