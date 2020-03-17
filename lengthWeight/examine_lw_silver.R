@@ -50,7 +50,7 @@ intercepts_silver[ , Pool := ifelse(grepl("gamma", par), "Hyper-parameter", Pool
 intercepts_silver[ , System := ifelse(grepl("gamma", par), "Hyper-parameter", System)]
 intercepts_silver[ , Pool := factor(Pool, levels = correct_pool_order)]
 intercepts_silver[ , parType := factor(parType, levels = c("1", "2"),
-                                       labels = c('Pool coefficients ("intercpts")', 'Growth coefficients ("slopes")'))]
+                                       labels = c('Intercpts', 'Slopes'))]
 
 lw_coef <-
     ggplot(intercepts_silver, aes(x = Pool, y = mean)) +
@@ -60,7 +60,8 @@ lw_coef <-
     geom_linerange(aes(ymin = l80, ymax = u80), size = 1.5) +
     geom_point(size = 2.5) +
     theme_bw() +
-    theme(strip.background = element_blank())
+    theme(strip.background = element_blank()) +
+    ylab("Parameter estimate")
 lw_coef
 ggsave("./figures/lw_coef_silver.pdf", lw_coef, width = 6, height = 6)
 ggsave("./figures/lw_coef_silver.jpg", lw_coef, width = 6, height = 6)

@@ -50,7 +50,7 @@ intercepts_bighead[ , Pool := ifelse(grepl("gamma", par), "Hyper-parameter", Poo
 intercepts_bighead[ , System := ifelse(grepl("gamma", par), "Hyper-parameter", System)]
 intercepts_bighead[ , Pool := factor(Pool, levels = correct_pool_order)]
 intercepts_bighead[ , parType := factor(parType, levels = c("1", "2"),
-                                       labels = c('Pool coefficients ("intercpts")', 'Growth coefficients ("slopes")'))]
+                                        labels = c('Intercpts', 'Slopes'))]
 
 lw_coef <-
     ggplot(intercepts_bighead, aes(x = Pool, y = mean)) +
@@ -60,7 +60,8 @@ lw_coef <-
     geom_linerange(aes(ymin = l80, ymax = u80), size = 1.5) +
     geom_point(size = 2.5) +
     theme_bw() +
-    theme(strip.background = element_blank())
+    theme(strip.background = element_blank()) +
+    ylab("Parameter estimate")
 lw_coef
 ggsave("./figures/lw_coef_bighead.pdf", lw_coef, width = 6, height = 6)
 ggsave("./figures/lw_coef_bighead.jpg", lw_coef, width = 6, height = 6)

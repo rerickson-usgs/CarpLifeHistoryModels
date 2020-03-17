@@ -5,125 +5,106 @@ library(tidyverse)
 library(data.table)
 library(scales)
 
-## Von B
-dat <- fread("../DemographicsData.csv")
+
+## Read in all data and fromat
+dat <- fread("../vonB/data_use.csv")
+dat[ Sex == "Unkown", Sex := "Unknown"]
+
+## Order pools
+new_pool_order <-
+    c("Pool 14",
+      "Pool 16",
+      "Pool 17",
+      "Pool 18",
+      "Pool 19",
+      "Pool 20",
+      "Pool 22",
+      "Pool 24",
+      "Pool 26",
+      "Pool 27",
+      "Alton",
+      "LaGrange",
+      "Peoria",
+      "Starved Rock",
+      "Marseilles",
+      "Dresden Island",
+      "JT Myers",
+      "Newburgh",
+      "Cannelton",
+      "McAlpine",
+      "Markland",
+      "Meldahl",
+      "RC Byrd"
+      )
+
+dat[ , Pool := factor(Pool,
+                      levels = new_pool_order
+                      )]
+
 dat[ , Sampdate :=ymd(Sampdate)]
-dat[ , Pool := factor(Pool)]
 
-dat2 <- dat[ !is.na(TL) & !is.na(Age), ]
-dat2[ , .N, by = Pool]
-dat2[ , Age2 := floor(Age)]
-dat2[ , Age3 := Age2 + (month(Sampdate)-5)/12]
-dat2[ , Pool :=factor(Pool)]
-dat2[ , levels(Pool)]
-dat2[ , PoolID := as.numeric(Pool)]
-
-ageProjection = seq(0, 20, by = 1)
-
-## Silver carp data
-vonBtablePool <- dat2[ Species %in% c("SVCP", "BHCP"),
-                      .N, by = .(Species, Pool)]
-
-vonBtable <- dat2[ Species %in% c("SVCP", "BHCP"),
-                  .N, by = .(Species)]
-vonBtable
-
+## vonb
+dat_vb <- dat[ !is.na(TL) & !is.na(Age),
+              .N, by = .(Species, Pool, System)]
+dat_vb
 
 ## maturity
-## Load and format raw data
-dat <- fread("../DemographicsData.csv")
-dat[ , Sampdate :=ymd(Sampdate)]
-dat2 <- dat[ Maturity != "NA",]
-dat2[ , Maturity := factor(Maturity)]
-dat2[ , M2 := as.numeric(Maturity) - 1]
-dat2[ , TLm := TL / 1000]
-dat2[ , WTkg := WT/1000]
-dat2[ , Month := month(Sampdate)]
-dat2[ , SpeciesFull := factor(Species, levels = c("BHCP", "SVCP"), labels = c("Bighead carp", "Silver carp"))]
-
-MattablePool <- dat2[ Species %in% c("SVCP", "BHCP"),
-                     .N, by = .(Species, Pool)]
-
-Mattable <- dat2[ Species %in% c("SVCP", "BHCP"),
-                  .N, by = .(Species)]
-Mattable
+dat_mat  <- dat[ !is.na(TL) & !is.na(Maturity),
+                .N, by = .(Species, Pool, System)]
+dat_mat
 
 ## length-weight
-## Read in a format data
-dat <- fread("../DemographicsData.csv")
-dat[ , Sampdate :=ymd(Sampdate)]
-dat[ , unique(Species)]
-dat[ Pool == "OR(pool 27)", Pool := "Pool 27"]
-dat[ Pool == "Dresden", Pool := "Dresden Island"]
-dat[ , Pool := factor(Pool)]
+dat_lw <- dat[ !is.na(TL) & !is.na(WT),
+              .N, by = .(Species, Pool, System)]
 
-dat2 <- dat[ !is.na(TL) & !is.na(WT), ]
-dat2[ , Pool := factor(Pool)]
-
-dat2[ , TLm  := TL/1000]
-dat2[ , WTkg := WT/1000]
-dat2[ , TLmL10 := log10(TLm)]
-dat2[ , WTkgL10 := log10(WTkg)]
+dat_lw
 
 ## Examine sex ratio
-SexTotal <- dat2[ Species %in% c("SVCP", "BHCP"), .N, by = .(Species, Sex)]
-SexTotal[ , SpeciesTotal := sum(N), by = Species]
-SexTotal[ , SexPer := N/SpeciesTotal]
-SexTotal
+sex_total <- dat[ , .N, by = .(Species, Sex)]
 
+sex_total[ Sex == "Immature", Sex := "Unknown"]
+sex_total <- sex_total[ , .(N = sum(N)), by = .(Species, Sex)]
+sex_total[ , species_total := sum(N), by = Species]
+sex_total[ , sex_per := round(N/species_total, 3) * 100]
+sex_total
 
-SexTotalNoNA <- dat2[ !is.na(Sex) & Species %in% c("SVCP", "BHCP"), .N, by = .(Species, Sex)]
+SexTotalNoNA <- dat[ Sex != "Unknown" & Sex !="Immature",
+                    .N, by = .(Species, Sex)]
 SexTotalNoNA[ , SpeciesTotal := sum(N), by = Species]
-SexTotalNoNA[ , SexPer := N/SpeciesTotal]
+SexTotalNoNA[ , SexPer := round(N/SpeciesTotal, 3) * 100]
 SexTotalNoNA
 
+## Join tables together
+dat_vb[ , Model := "von Bertalanffy"]
+dat_lw[ , Model := "Length-weight"]
+dat_mat[ , Model := "Maturity"]
 
 
-LWtablePool <- dat2[ Species %in% c("SVCP", "BHCP"),
-                     .N, by = .(Species, Pool)]
-
-LWtable <- dat2[ Species %in% c("SVCP", "BHCP"),
-                  .N, by = .(Species)]
-LWtable
-
-vonBtablePool[ , Model := "von Bertalanffy"]
-MattablePool[ , Model := "Maturity"]
-LWtablePool[ , Model := "Length-weight"]
-
-sums <- rbind(
-    vonBtablePool,
-    MattablePool,
-    LWtablePool
+sums <-
+    rbind(
+    dat_vb,
+    dat_lw,
+    dat_mat
     )
 
-sums
-RiverKey <- fread("RiverKey.txt")
-RiverKey[ , Pool := factor(Pool, levels = Pool)]
-RiverKey <- RiverKey[ Pool!= "Hyper-parameter",]
-sums[ Pool == "OR(pool 27)", Pool := "Pool 27"]
-setkey(RiverKey, "Pool")
-setkey(sums, "Pool")
-
-sums <- RiverKey[sums]
-
-
-sums[ , Pool := factor(Pool, levels = RiverKey[ , Pool])]
-
 sums[ , PoolPlot := paste0(Pool, " (N = ", N, ")")]
+sums
 
 sums[ , Species := factor(Species)]
-levels(sums$Species) <- c("Bighead carp" , "Silver carp")
 
 sumsPlot <-
-    ggplot(sums, aes(x = Pool, y = N, fill = Species)) + geom_col(position = 'dodge') +
-    facet_grid( River ~  Model, scales ="free_y") +
+    ggplot(sums, aes(x = Pool, y = N, fill = Species)) +
+    geom_col(position = 'dodge') +
+    facet_grid( System ~  Model, scales ="free_y") +
     coord_flip() +
     scale_fill_manual(values = c("red", "blue")) +
-    theme_minimal() +
+    theme_bw() +
+    theme(strip.background = element_blank()) +
     scale_y_continuous(label=comma)
 sums
 print(sumsPlot)
-ggsave("countPlot.pdf", sumsPlot, width = 9, height = 4)
+ggsave("countPlot.pdf", sumsPlot, width = 9, height = 5)
+ggsave("countPlot.jpg", sumsPlot, width = 9, height = 5)
 
 
 
