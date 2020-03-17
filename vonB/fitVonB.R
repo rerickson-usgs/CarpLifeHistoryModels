@@ -73,50 +73,15 @@ stanOutO_silver  <-
     rstan::sampling(stan_vonBNot0,
                      data = stanData_silver, chains = 4, iter = n_iter,
                      control = list(adapt_delta = 0.8))
-save(stanOutO_silver,
+save(dat3_silver,
+     stanOutO_silver,
      stanData_silver,
      dat3_silver_pool_key,
      file = "vonBfitNot0_silver.RData")
 
-## Silver carp silver analysis
-dat3_silver_female <- dat2[ Species == "Silver" & Sex %in% c("Female", "Unkown"), ]
-dat3_silver_female[ , Pool := droplevels(Pool)]
-dat3_silver_female[ , PoolID := as.numeric(Pool)]
-ageProjection = seq(0, 20, by = 1)
-dat3_silver_female_pool_key <-
-    dat3_silver_female[ , .(PoolID = mean(PoolID)), by = .( System, Pool)]
-
-stanData_silver_female <- list(
-    nFish  = dim(dat3_silver_female)[1],
-    nSites = length(dat3_silver_female[, unique(PoolID)]),
-    length = dat3_silver_female[ , TLm],
-    poolID = dat3_silver_female[ , PoolID],
-    age = dat3_silver_female[ , Age],
-    hp_tau = 1.5,
-    hp_sigma = 10,
-    hp_omega = 2,
-    p_mu_gamma = 0,
-    p_mu_gammaSD = 2,
-    nProject = length(ageProjection),
-    ageProject = ageProjection
-    )
-
-## Model takes ~0.25 hrs to run.
-stan_vonBNot0 <-
-    stan_model(file = "vonBoNot0.stan")
-
-stanOutO_silver_female  <-
-    rstan::sampling(stan_vonBNot0,
-                     data = stanData_silver_female, chains = 4, iter = n_iter,
-                     control = list(adapt_delta = 0.8))
-save(stanOutO_silver_female,
-     stanData_silver_female,
-     dat3_silver_female_pool_key,
-     file = "vonBfitNot0_silver_female.RData")
-
 
 ## Bighead carp bighead analysis
-dat3_bighead <- dat2[ Species == "Bighead" & Sex %in% c("Male", "Unkown"), ]
+dat3_bighead <- dat2[ Species == "Bighead", ]
 dat3_bighead[ , Pool := droplevels(Pool)]
 dat3_bighead[ , PoolID := as.numeric(Pool)]
 ageProjection = seq(0, 20, by = 1)

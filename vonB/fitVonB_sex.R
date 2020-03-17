@@ -73,7 +73,8 @@ stanOutO_silver_male  <-
     rstan::sampling(stan_vonBNot0,
                      data = stanData_silver_male, chains = 4, iter = n_iter,
                      control = list(adapt_delta = 0.8))
-save(stanOutO_silver_male,
+save(dat3_silver_male,
+     stanOutO_silver_male,
      stanData_silver_male,
      dat3_silver_male_pool_key,
      file = "vonBfitNot0_silver_male.RData")
@@ -109,7 +110,8 @@ stanOutO_silver_female  <-
     rstan::sampling(stan_vonBNot0,
                      data = stanData_silver_female, chains = 4, iter = n_iter,
                      control = list(adapt_delta = 0.8))
-save(stanOutO_silver_female,
+save(dat3_silver_female,
+     stanOutO_silver_female,
      stanData_silver_female,
      dat3_silver_female_pool_key,
      file = "vonBfitNot0_silver_female.RData")
@@ -146,7 +148,8 @@ stanOutO_bighead_male  <-
     rstan::sampling(stan_vonBNot0,
                      data = stanData_bighead_male, chains = 4, iter = n_iter,
                      control = list(adapt_delta = 0.8))
-save(stanOutO_bighead_male,
+save(dat3_bighead_male,
+     stanOutO_bighead_male,
      stanData_bighead_male,
      dat3_bighead_male_pool_key,
      file = "vonBfitNot0_bighead_male.RData")
@@ -182,7 +185,8 @@ stanOutO_bighead_female  <-
     rstan::sampling(stan_vonBNot0,
                      data = stanData_bighead_female, chains = 4, iter = n_iter,
                      control = list(adapt_delta = 0.8))
-save(stanOutO_bighead_female,
+save(dat3_bighead_female,
+     stanOutO_bighead_female,
      stanData_bighead_female,
      dat3_bighead_female_pool_key,
      file = "vonBfitNot0_bighead_female.RData")
