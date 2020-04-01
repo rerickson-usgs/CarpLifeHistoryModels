@@ -50,6 +50,8 @@ ageProjection = seq(0, 20, by = 1)
 dat3_silver_pool_key <-
     dat3_silver[ , .(PoolID = mean(PoolID)), by = .( System, Pool)]
 
+## placeholder for inputs
+
 stanData_silver <- list(
     nFish  = dim(dat3_silver)[1],
     nSites = length(dat3_silver[, unique(PoolID)]),

@@ -15,7 +15,7 @@ dat[ , Sampdate :=ymd(Sampdate)]
 
 dat2 <- dat[ !is.na(Maturity) & !is.na(TLm), ]
 
-## Examine by pool to see if we need to pool or can estimate across pools
+## Extract pools to use
 pools_use_mat_silver <-
     dat2[ , .N, by = .( Pool, Maturity, Species)][
         Species =="Silver" & Maturity == 0, ][, unique(Pool)]
@@ -27,6 +27,12 @@ pools_use_mat_bighead <-
 
 dat3_silver <- dat2[ Species == "Silver" & Pool %in% pools_use_mat_silver, ]
 dat3_bighead <- dat2[ Species == "Bighead" & Pool %in% pools_use_mat_bighead, ]
+
+dat3_silver[ , PoolID := as.numeric(as.factor(Pool))]
+
+dat3_silver_pool_key <-
+    dat3_silver[ , .(PoolID = mean(PoolID)), by = .(System, Pool)]
+dat_3_pool_key
 
 
 ## Get things ready for silver carp
@@ -40,14 +46,54 @@ dat3_bighead <- dat2[ Species == "Bighead" & Pool %in% pools_use_mat_bighead, ]
 ## no_x * x
 
 ## Create predictor variables
-X_1_silver  <- model.matrix( ~ Pool -1, dat3_silver)
-X_2_silver <- X_1_silver * dat3_silver[ , TLm]
+## X_1_silver  <- model.matrix( ~ Pool -1, dat3_silver)
+## X_2_silver <- X_1_silver * dat3_silver[ , TLm]
+## head(X_1_silver)
+## head(X_2_silver)
+X_silver  <- model.matrix( ~ TLm, dat3_silver)
+head(X_silver)
 
-y_silver <-  dat3_silver[ , Maturity]
 
-## Create projection data
-data_project_silver <- seq(dat3_silver[, range(TLm)[1]],
-                           dat3_silver[, range(TLm)[2]], by = 0.001)
+## Function inputs
+## Ind level inputs
+y <-  dat3_silver[ , Maturity]
+jj <- dat3_silver[ , PoolID]
+
+
+## Predictor matrix on individual level
+ind_dat <- dat3_silver
+ind_formula <- ~ TLm
+
+## Group inputs
+group_dat <- dat3_silver_pool_key
+group_formula <- ~1
+
+## Projection inputs
+n_projection <- 10
+min_projection <- dat3_silver[, min(TLm)]
+max_projection <- dat3_silver[, max(TLm)]
+
+
+## inside function
+X <- model.matrix( ind_formula, data = ind_dat)
+U <- model.matrix( group_formula, data = group_dat)
+
+N <- nrow(X)
+K <- ncol(X)
+N_groups <- nrow(U)
+X_project <-
+    matrix(
+        c(rep(1, n_projection),
+          seq(min_projection,
+              max_projection, length.out = n_projection)),
+        nrow = 2, byrow = TRUE
+    )
+
+standata <- list(N = N, K = K,
+                 N_groups = N_groups, L = L,
+                 jj = jj, X = X, y = y, U = U,
+                 N_project = N_project, X_project = X_project)
+
 
 
 stanData_silver <- list(
@@ -61,12 +107,14 @@ stanData_silver <- list(
 )
 
 mat_model <-
-    stan_model(file = "maturity.stan")
+    stan_model(file = "../../Parameter_package/fishStan/inst/stan/hierarchicalLogistical.stan")
 
 stanOut_silver <- rstan::sampling(mat_model,
-                              data = stanData_silver,
-                              chains = 4, iter = n_iter,
+                              data = standata,
+                              chains = 4, iter = 600,
                               control = list(adapt_delta = 0.8))
+
+print(stanOut_silver, pars = 'gamma')
 
 save(file = "mat_stan_silver.Rda",
      stanOut_silver,

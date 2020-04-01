@@ -51,16 +51,18 @@ dat[ , Pool := factor(Pool,
 ## Order gear_summary
 new_gear_summary_order <-
     c("Electrofishing",
-      "Commercial",
       "Jumped",
       "Net",
       "Unknown/Other")
 
 ## new_gear_summary_order[ !new_gear_summary_order %in%
 ##                         dat[ , levels(factor(Gear_summary))]]
-
+##dat[ , Gear_summary := as.character(Gear_summary)]
+dat[ Gear_summary == "Commercial", Gear_summary := "Net"]
 dat[ , Gear_summary := factor(Gear_summary,
                               levels = new_gear_summary_order), ]
+
+levels(dat$Gear_summary)[4] <- "Unknown"
 
 ## Create summaries of the data
 dat_year_pool  <- dat[ , .N, by = .(Pool, Year, System, Gear_summary,
@@ -84,7 +86,7 @@ gg_gear_summary <-
     xlab("Pool")
 print(gg_gear_summary)
 ggsave("gg_gear_summary.jpg", gg_gear_summary,
-       width = 6, height = 4)
+       width = 8, height = 4)
 
 ## @knitr examine_comm
 gg_comm <-
@@ -98,7 +100,7 @@ gg_comm <-
     theme(strip.background = element_blank())
 print(gg_comm)
 ggsave("gg_com.jpg", gg_comm,
-       width = 6, height = 4)
+       width = 8, height = 4)
 
 
 ## @knitr examine_comm_time
@@ -116,12 +118,20 @@ ggplot(dat_year_pool_IL, aes(x = Year, y = N, fill = Commercial)) +
 ## @knitr all_length_by_harvest
 dat_tl <- dat[ !is.na(TLm), ]
 dat_tl[ , Pool := factor(Pool)]
-options(warn=-1)
 
-ggplot(dat_tl,
-       aes(x = Pool, y = TLm,
-           fill = Gear_summary)) +
-    facet_grid( . ~ System , scales = 'free') +
+dat_tl_oh <- dat_tl[ !is.na(TLm) & System == "Ohio", .(.N), by = Gear_summary][ ,per_n := round(N/sum(N), 3)]
+dat_tl_ms <- dat_tl[ !is.na(TLm) & System == "Mississippi", .(.N), by = Gear_summary][ ,per_n := round(N/sum(N), 3)]
+dat_tl_il_bh <- dat_tl[ !is.na(TLm) & System == "Illinois" & Species == "Bighead", .(.N), by = Gear_summary][ ,per_n := round(N/sum(N), 3)]
+dat_tl_il_sv <- dat_tl[ !is.na(TLm) & System == "Illinois" & Species == "Silver", .(.N), by = Gear_summary][ ,per_n := round(N/sum(N), 3)]
+dat_tl_il_sv
+
+
+options(warn=-1)
+length_gg <-
+    ggplot(dat_tl,
+           aes(x = Pool, y = TLm,
+               fill = Gear_summary)) +
+    facet_grid( Species ~ System , scales = 'free') +
     geom_violin(draw_quantiles = 0.5) +
     scale_fill_colorblind("Gear type") +
     theme_bw() +
@@ -129,6 +139,9 @@ ggplot(dat_tl,
     xlab("Pool") +
     theme(axis.text.x = element_text(angle = -45, hjust = 0),
           strip.background = element_blank())
+print(length_gg)
+ggsave("length_gg.jpg", length_gg, width = 14, height = 6)
+ggsave("length_gg.pdf", length_gg, width = 14, height = 6)
 options(warn=0)
 
 ## @kntir run_lmer_length
@@ -196,17 +209,21 @@ pools_age_order <-
 dat_age <- dat[ !is.na(Age), ]
 dat_age[ , Pool := factor(Pool, levels = pools_age_order)]
 
-
-ggplot(dat_age,
-       aes(x = Pool, y = Age, fill = Gear_summary)) +
+age_gg <-
+    ggplot(dat_age,
+           aes(x = Pool, y = Age, fill = Gear_summary)) +
     geom_violin(draw_quantiles = 0.5, alpha = 0.5) +
-    facet_grid( ~ System, scales = 'free_x')  +
+    facet_grid( Species ~ System, scales = 'free_x')  +
     scale_fill_colorblind("Gear") +
     theme_bw() +
     theme(axis.text.x = element_text(angle = -45, hjust = 0),
           strip.background = element_blank()) +
     xlab("Pool") +
     ylab("Age (y)")
+print(age_gg)
+ggsave("age_gg.jpg", age_gg, width = 11, height = 6)
+ggsave("age_gg.pdf", age_gg, width = 11, height = 6)
+
 
 ## @knitr examine_mat
 dat_mat_pool <-
